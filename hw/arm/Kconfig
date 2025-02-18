@@ -641,3 +641,16 @@ config ARMSSE
     select UNIMP
     select SSE_COUNTER
     select SSE_TIMER
+
+config TEGRA30
+    bool
+    default y
+    depends on TCG && ARM
+    select TEGRA30_APB_MISC
+    select TEGRA30_CLK
+    select TEGRA30_PMC
+
+config MHI2_HARMAN
+    bool
+    default y
+    depends on TEGRA30

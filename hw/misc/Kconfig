@@ -215,4 +215,13 @@ config IOSB
 config XLNX_VERSAL_TRNG
     bool
 
+config TEGRA30_APB_MISC
+    bool
+
+config TEGRA30_CLK
+    bool
+
+config TEGRA30_PMC
+    bool
+
 source macio/Kconfig

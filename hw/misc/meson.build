@@ -152,3 +152,7 @@ system_ss.add(when: 'CONFIG_SBSA_REF', if_true: files('sbsa_ec.c'))
 
 # HPPA devices
 system_ss.add(when: 'CONFIG_LASI', if_true: files('lasi.c'))
+
+system_ss.add(when: 'CONFIG_TEGRA30_APB_MISC', if_true: files('tegra30_apb_misc.c'))
+system_ss.add(when: 'CONFIG_TEGRA30_CLK', if_true: files('tegra30_clk.c'))
+system_ss.add(when: 'CONFIG_TEGRA30_PMC', if_true: files('tegra30_pmc.c'))
