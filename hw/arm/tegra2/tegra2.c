@@ -45,15 +45,12 @@
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
 
-#include "bundle/boot_iram.bin.h"
-#include "bundle/u_boot_dtb_tegra.bin.h"
-
 #define DIRQ(X) qdev_get_gpio_in(tegra_irq_dispatcher_dev, X)
 #define DIRQ_INT(X) qdev_get_gpio_in(tegra_irq_dispatcher_dev, X + INT_MAIN_NR)
 
-#define BOOTLOADER_BASE 0x108000
+#define BOOTLOADER_BASE 0x84008000
 #define BOOTROM_BASE    0xFFF00000
-#define BOOTMON_BASE    0xF0010000
+// #define BOOTMON_BASE    0xF0010000
 
 #define RW  0
 #define RO  1
@@ -68,38 +65,38 @@ struct CPUAddressSpace {
     MemoryListener tcg_as_listener;
 };
 
-static uint32_t tegra_bootmon[] = {
-    0xe3a00206, /* ldr r0, =TEGRA_PG */
-    0xe5901000, /* ldr r1, [r0]] */
-    0xe59f0054, /* ldr r0, =TEGRA_PG_A9 */
-    0xe1500001, /* cmp r0, r1 */
-    0x1a00000f, /* bne boot         @ on AVP */
-    0xee100fb0, /* mrc 15, 0, r0, cr0, cr0, {5} */
-    0xe200000f, /* and r0, r0, #0xF */
-    0xe3500000, /* cmp r0, #0 */
-    0x0a00000b, /* beq boot */
-    0xe59f303c, /* ldr r3, =bootX */
-    0xe5930000, /* ldr r0, [r3] */
-    0xe3500001, /* cmp r0, #1 */
-    0x1a000007, /* bne boot */
-    0xe59f2030, /* ldr r2, =TEGRA_ARM_INT_DIST_BASE */
-    0xe3a01001, /* mov r1, #1 */
-    0xe5821000, /* str r1, [r2]         @ set GICC_CTLR.Enable */
-    0xe3a010ff, /* mov r1, #0xff */
-    0xe5821004, /* str r1, [r2, #4]     @ set GIC_PMR.Priority to 0xff */
-    0xf57ff04f, /* dsb */
-    0xe3a01001, /* mov r1, #1 */
-    0xe5831000, /* str r1, [r3] */
-/* boot: */
-    0xe59f0014, /* ldr r0, =TEGRA_EXCEPTION_VECTORS_BASE */
-    0xe5900000, /* ldr r0, [r0] */
-    0xe12fff10, /* bx  r0 */
-    0x00000000, /* bootX */
-    0x55555555, /* TEGRA_PG_A9 */
-    0x00000060, /* TEGRA_PG */
-    0x50041000, /* TEGRA_ARM_INT_DIST_BASE */
-    0x6000f000, /* TEGRA_EXCEPTION_VECTORS_BASE */
-};
+// static uint32_t tegra_bootmon[] = {
+//     0xe3a00206, /* ldr r0, =TEGRA_PG */
+//     0xe5901000, /* ldr r1, [r0]] */
+//     0xe59f0054, /* ldr r0, =TEGRA_PG_A9 */
+//     0xe1500001, /* cmp r0, r1 */
+//     0x1a00000f, /* bne boot         @ on AVP */
+//     0xee100fb0, /* mrc 15, 0, r0, cr0, cr0, {5} */
+//     0xe200000f, /* and r0, r0, #0xF */
+//     0xe3500000, /* cmp r0, #0 */
+//     0x0a00000b, /* beq boot */
+//     0xe59f303c, /* ldr r3, =bootX */
+//     0xe5930000, /* ldr r0, [r3] */
+//     0xe3500001, /* cmp r0, #1 */
+//     0x1a000007, /* bne boot */
+//     0xe59f2030, /* ldr r2, =TEGRA_ARM_INT_DIST_BASE */
+//     0xe3a01001, /* mov r1, #1 */
+//     0xe5821000, /* str r1, [r2]         @ set GICC_CTLR.Enable */
+//     0xe3a010ff, /* mov r1, #0xff */
+//     0xe5821004, /* str r1, [r2, #4]     @ set GIC_PMR.Priority to 0xff */
+//     0xf57ff04f, /* dsb */
+//     0xe3a01001, /* mov r1, #1 */
+//     0xe5831000, /* str r1, [r3] */
+// /* boot: */
+//     0xe59f0014, /* ldr r0, =TEGRA_EXCEPTION_VECTORS_BASE */
+//     0xe5900000, /* ldr r0, [r0] */
+//     0xe12fff10, /* bx  r0 */
+//     0x00000000, /* bootX */
+//     0x55555555, /* TEGRA_PG_A9 */
+//     0x00000060, /* TEGRA_PG */
+//     0x50041000, /* TEGRA_ARM_INT_DIST_BASE */
+//     0x6000f000, /* TEGRA_EXCEPTION_VECTORS_BASE */
+// };
 
 static uint32_t tegra_bootrom[] = {
     0xea000006, /* b reset_addr */
@@ -186,15 +183,10 @@ static void tegra2_create_cpus(void)
     set_is_tegra_cpu(TEGRA2_COP);
 }
 
-static struct arm_boot_info tegra_board_binfo = {
-    .board_id = -1, /* device-tree-only board */
-};
-
 static void load_memory_images(MachineState *machine)
 {
     const char *bootloader_path = machine->bootloader;
-    const char *iram_path = machine->iram;
-    const char *dtb_path = machine->dtb;
+    // const char *iram_path = machine->iram;
     int tmp;
 
     /* TODO: load bootloader from emmc */
@@ -203,49 +195,38 @@ static void load_memory_images(MachineState *machine)
     for (tmp = 0; tmp < ARRAY_SIZE(tegra_bootrom); tmp++)
         tegra_bootrom[tmp] = tswap32(tegra_bootrom[tmp]);
 
+    bootloader_path = "/home/iscle/Documents/mib/bootloader_0.bin";
     if (bootloader_path != NULL) {
         /* Load bootloader */
         assert(load_image_targphys(bootloader_path, BOOTLOADER_BASE,
                                    machine->ram_size - BOOTLOADER_BASE) > 0);
-    } else {
-        printf("-bootloader not specified, falling back to bundled tegra u-boot\n");
-        rom_add_blob_fixed_as("bootloader", u_boot_tegra_bin, u_boot_tegra_bin_len,
-                              BOOTLOADER_BASE, &address_space_memory);
     }
+    // else {
+    //     printf("-bootloader not specified, falling back to bundled tegra u-boot\n");
+    //     rom_add_blob_fixed_as("bootloader", u_boot_tegra_bin, u_boot_tegra_bin_len,
+    //                           BOOTLOADER_BASE, &address_space_memory);
+    // }
 
-    if (iram_path != NULL) {
-        /* Load BIT */
-        assert(load_image_targphys(iram_path, TEGRA_IRAM_BASE,
-                                   TEGRA_IRAM_SIZE) > 0);
-    } else {
-        printf("-iram not specified, falling back to bundled\n");
-        rom_add_blob_fixed_as("iram", iram_bin, iram_bin_len,
-                              TEGRA_IRAM_BASE, &address_space_memory);
-    }
+    // if (iram_path != NULL) {
+    //     /* Load BIT */
+    //     assert(load_image_targphys(iram_path, TEGRA_IRAM_BASE,
+    //                                TEGRA_IRAM_SIZE) > 0);
+    // } else {
+    //     printf("-iram not specified, falling back to bundled\n");
+    //     rom_add_blob_fixed_as("iram", iram_bin, iram_bin_len,
+    //                           TEGRA_IRAM_BASE, &address_space_memory);
+    // }
 
     /* Load IROM */
     rom_add_blob_fixed("bootrom", tegra_bootrom, sizeof(tegra_bootrom),
                        BOOTROM_BASE);
 
-    for (tmp = 0; tmp < ARRAY_SIZE(tegra_bootmon); tmp++)
-        tegra_bootmon[tmp] = tswap32(tegra_bootmon[tmp]);
+    // for (tmp = 0; tmp < ARRAY_SIZE(tegra_bootmon); tmp++)
+    //     tegra_bootmon[tmp] = tswap32(tegra_bootmon[tmp]);
 
-    /* Load boot monitor */
-    rom_add_blob_fixed("bootmon", tegra_bootmon, sizeof(tegra_bootmon),
-                       BOOTMON_BASE);
-
-    if (machine->kernel_filename != NULL) {
-        tmp = load_image_targphys(machine->kernel_filename, 0x1000000,
-                                  machine->ram_size);
-        assert(tmp > 0);
-
-        if (dtb_path != NULL) {
-            tegra_board_binfo.dtb_filename = dtb_path;
-
-            arm_load_dtb(0x1000000 + tmp, &tegra_board_binfo, machine->ram_size,
-                         &address_space_memory, machine);
-        }
-    }
+    // /* Load boot monitor */
+    // rom_add_blob_fixed("bootmon", tegra_bootmon, sizeof(tegra_bootmon),
+    //                    BOOTMON_BASE);
 }
 
 static void tegra2_init(MachineState *machine)
@@ -266,8 +247,8 @@ static void tegra2_init(MachineState *machine)
     memory_region_add_and_init_ram(sysmem, "tegra.hi-vec",
                                    0xffff0000, SZ_64K, RW);
 
-    memory_region_add_and_init_ram(sysmem, "tegra.bootmon",
-                                   BOOTMON_BASE, TARGET_PAGE_SIZE, RO);
+    // memory_region_add_and_init_ram(sysmem, "tegra.bootmon",
+    //                                BOOTMON_BASE, TARGET_PAGE_SIZE, RO);
 
     /* Internal static RAM */
     memory_region_add_and_init_ram(sysmem, "tegra.iram",
@@ -448,14 +429,14 @@ static void tegra2_init(MachineState *machine)
                                            TEGRA_USB3_BASE, DIRQ(INT_USB3));
 
     /* Unified Command Queue */
-    tegra_ucq_dev = sysbus_create_simple("tegra.dummy256", 0x60010000, NULL);
+    tegra_ucq_dev = sysbus_create_simple("tegra.dummy256", TEGRA_AVPUCQ_BASE, NULL);
 
     /* Bit Stream Engine Audio */
     tegra_bsea_dev = sysbus_create_simple("tegra.bsea", 0x60011000,
                                           DIRQ(INT_VDE_BSE_A));
 
-    /* Syntax Engine */
-    tegra_sxe_dev = sysbus_create_simple("tegra.sxe", 0x6001A000, NULL);
+    // /* Syntax Engine */
+    // tegra_sxe_dev = sysbus_create_simple("tegra.sxe", TEGRA_VDE_BASE, NULL);
 
     /* BSE Video */
     tegra_bsev_dev = sysbus_create_simple("tegra.bsev", 0x6001B000,
@@ -502,11 +483,11 @@ static void tegra2_init(MachineState *machine)
                                           TEGRA_I2C2_BASE, DIRQ(INT_I2C2));
     tegra_idc3_dev = sysbus_create_simple("tegra-i2c",
                                           TEGRA_I2C3_BASE, DIRQ(INT_I2C3));
-    tegra_dvc_dev = qdev_new("tegra-i2c");
-    object_property_set_bool(tegra_dvc_dev, "is_dvc", true, &error_abort);
-    sysbus_realize_and_unref(SYS_BUS_DEVICE(tegra_dvc_dev), &error_fatal);
-    sysbus_mmio_map(SYS_BUS_DEVICE(tegra_dvc_dev), 0, TEGRA_DVC_BASE);
-    sysbus_connect_irq(SYS_BUS_DEVICE(tegra_dvc_dev), 0, DIRQ(INT_DVC));
+    // tegra_dvc_dev = qdev_new("tegra-i2c");
+    // object_property_set_bool(tegra_dvc_dev, "is_dvc", true, &error_abort);
+    // sysbus_realize_and_unref(SYS_BUS_DEVICE(tegra_dvc_dev), &error_fatal);
+    // sysbus_mmio_map(SYS_BUS_DEVICE(tegra_dvc_dev), 0, TEGRA_DVC_BASE);
+    // sysbus_connect_irq(SYS_BUS_DEVICE(tegra_dvc_dev), 0, DIRQ(INT_DVC));
 
     /* Host1x IO */
     tegra_grhost_dev = sysbus_create_varargs("tegra.grhost",
@@ -579,21 +560,21 @@ static void tegra2_init(MachineState *machine)
                                 TEGRA_HOST1X_BASE,
                                 TEGRA_HOST1X_BASE, TEGRA_HOST1X_SIZE);
 
-    cop_memory_region_add_alias(cop_sysmem, "tegra.cop-GART", sysmem,
-                                TEGRA_GART_BASE,
-                                TEGRA_GART_BASE, TEGRA_GART_SIZE);
+    // cop_memory_region_add_alias(cop_sysmem, "tegra.cop-GART", sysmem,
+    //                             TEGRA_GART_BASE,
+    //                             TEGRA_GART_BASE, TEGRA_GART_SIZE);
 
     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-PPSB", sysmem,
                                 0x60000000,
                                 0x60000000, SZ_256M);
 
     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-APB", sysmem,
-                                0x70000000,
-                                0x70000000, SZ_256M);
+                                TEGRA_APB_MISC_BASE,
+                                TEGRA_APB_MISC_BASE, SZ_256M);
 
     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-DRAM UC", sysmem,
-                                0x80000000,
-                                0x00000000, TEGRA_DRAM_SIZE);
+                                TEGRA_DRAM_BASE,
+                                TEGRA_DRAM_BASE, TEGRA_DRAM_SIZE);
 
     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-AHB", sysmem,
                                 0xC0000000,
@@ -603,9 +584,9 @@ static void tegra2_init(MachineState *machine)
                                 BOOTROM_BASE,
                                 BOOTROM_BASE, 0xC000);
 
-    cop_memory_region_add_alias(cop_sysmem, "tegra.cop-bootmon", sysmem,
-                                BOOTMON_BASE,
-                                BOOTMON_BASE, TARGET_PAGE_SIZE);
+    // cop_memory_region_add_alias(cop_sysmem, "tegra.cop-bootmon", sysmem,
+    //                             BOOTMON_BASE,
+    //                             BOOTMON_BASE, TARGET_PAGE_SIZE);
 
     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-mmu", sysmem,
                                 0xF0000000,
@@ -628,6 +609,8 @@ static void tegra2_init(MachineState *machine)
     load_memory_images(machine);
 
     tegra_cpu_reset_init();
+
+    cpu_set_pc(cs, BOOTROM_BASE);
 }
 
 static void tegra2_reset(MachineState *state)
@@ -650,28 +633,4 @@ static void __tegra2_machine_init(MachineClass *mc)
     mc->ignore_memory_transaction_failures = true;
 }
 
-enum tegra_board_type tegra_board;
-
-static void tegra2_qemu_machine_init(MachineClass *mc)
-{
-    tegra_board = TEGRA2_BOARD_QEMU;
-    __tegra2_machine_init(mc);
-}
-
-static void tegra2_alpha_machine_init(MachineClass *mc)
-{
-    /* legacy alpha-version name */
-    tegra_board = TEGRA2_BOARD_QEMU;
-    __tegra2_machine_init(mc);
-}
-
-static void tegra2_picasso_machine_init(MachineClass *mc)
-{
-    /* Acer A500 machine */
-    tegra_board = TEGRA2_BOARD_PICASSO;
-    __tegra2_machine_init(mc);
-}
-
-DEFINE_MACHINE("tegra2-picasso", tegra2_picasso_machine_init)
-DEFINE_MACHINE("tegra2-alpha", tegra2_alpha_machine_init)
-DEFINE_MACHINE("tegra2-qemu", tegra2_qemu_machine_init)
+DEFINE_MACHINE("tegra2-qemu", __tegra2_machine_init)

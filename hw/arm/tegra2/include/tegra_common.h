@@ -25,11 +25,4 @@
 #include "hw/qdev-properties.h"
 #include "migration/vmstate.h"
 
-enum tegra_board_type {
-    TEGRA2_BOARD_QEMU,
-    TEGRA2_BOARD_PICASSO,
-};
-
-extern enum tegra_board_type tegra_board;
-
 #endif
