@@ -104,4 +104,10 @@ typedef union xrq_events_u {
 #define HALT_CPU1_EVENTS_OFFSET 0x14
 #define CPU1_CSR_OFFSET 0x18
 
+#define HALT_CPU2_EVENTS_OFFSET 0x1C
+#define CPU2_CSR_OFFSET 0x20
+
+#define HALT_CPU3_EVENTS_OFFSET 0x24
+#define CPU3_CSR_OFFSET 0x28
+
 #endif // TEGRA_FLOW_CTRL_H

@@ -74,6 +74,8 @@ int tegra_ictlr_is_irq_pending_on_cpu(int cpu_id)
     switch (cpu_id) {
     case TEGRA2_A9_CORE0:
     case TEGRA2_A9_CORE1:
+    case TEGRA2_A9_CORE2:
+    case TEGRA2_A9_CORE3:
         ret |= tegra_ictlr_is_irq_pending(s, s->virq_cpu, 0);
         ret |= tegra_ictlr_is_irq_pending(s, s->vfiq_cpu, 1);
         break;

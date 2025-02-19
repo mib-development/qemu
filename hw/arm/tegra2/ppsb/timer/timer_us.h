@@ -51,7 +51,8 @@ typedef union cntr_freeze_u {
     struct {
         unsigned int dbg_freeze_cpu0:1;     /* 1 = freeze timers when CPU0 is in debug state, 0 = no freeze */
         unsigned int dbg_freeze_cpu1:1;     /* 1 = freeze timers when CPU1 is in debug state, 0 = no freeze */
-        unsigned int undefined_bits_2_3:2;
+        unsigned int dbg_freeze_cpu2:1;     /* 1 = freeze timers when CPU2 is in debug state, 0 = no freeze */
+        unsigned int dbg_freeze_cpu3:1;     /* 1 = freeze timers when CPU3 is in debug state, 0 = no freeze */
         unsigned int dbg_freeze_cop:1;      /* 1 = freeze timers when COP is in debug state, 0 = no freeze */
         unsigned int undefined_bits_5_31:27;
     };

@@ -1190,6 +1190,14 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
         if (rst.set_cpureset1) {
             tegra_cpu_reset_assert(TEGRA2_A9_CORE1);
         }
+
+        if (rst.set_cpureset2) {
+            tegra_cpu_reset_assert(TEGRA2_A9_CORE2);
+        }
+
+        if (rst.set_cpureset3) {
+            tegra_cpu_reset_assert(TEGRA2_A9_CORE3);
+        }
         break;
     }
     case RST_CPU_CMPLX_CLR_OFFSET:
@@ -1205,6 +1213,14 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
 
         if (rst.clr_cpureset1) {
             tegra_cpu_reset_deassert(TEGRA2_A9_CORE1, 0);
+        }
+
+        if (rst.clr_cpureset2) {
+            tegra_cpu_reset_deassert(TEGRA2_A9_CORE2, 0);
+        }
+
+        if (rst.clr_cpureset3) {
+            tegra_cpu_reset_deassert(TEGRA2_A9_CORE3, 0);
         }
         break;
     }

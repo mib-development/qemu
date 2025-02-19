@@ -272,6 +272,12 @@ static uint64_t tegra_flow_priv_read(void *opaque, hwaddr offset,
     case HALT_CPU1_EVENTS_OFFSET:
         ret = s->halt_events[TEGRA2_A9_CORE1].reg32;
         break;
+    case HALT_CPU2_EVENTS_OFFSET:
+        ret = s->halt_events[TEGRA2_A9_CORE2].reg32;
+        break;
+    case HALT_CPU3_EVENTS_OFFSET:
+        ret = s->halt_events[TEGRA2_A9_CORE3].reg32;
+        break;
     case HALT_COP_EVENTS_OFFSET:
         ret = s->halt_events[TEGRA2_COP].reg32;
         break;
@@ -285,6 +291,16 @@ static uint64_t tegra_flow_priv_read(void *opaque, hwaddr offset,
         s->csr[TEGRA2_A9_CORE1].halt = tegra_cpu_halted(TEGRA2_A9_CORE1);
         s->csr[TEGRA2_A9_CORE1].pwr_off_sts = tegra_cpu_is_powergated(TEGRA2_A9_CORE1);
         ret = s->csr[TEGRA2_A9_CORE1].reg32;
+        break;
+    case CPU2_CSR_OFFSET:
+        s->csr[TEGRA2_A9_CORE2].halt = tegra_cpu_halted(TEGRA2_A9_CORE2);
+        s->csr[TEGRA2_A9_CORE2].pwr_off_sts = tegra_cpu_is_powergated(TEGRA2_A9_CORE2);
+        ret = s->csr[TEGRA2_A9_CORE2].reg32;
+        break;
+    case CPU3_CSR_OFFSET:
+        s->csr[TEGRA2_A9_CORE3].halt = tegra_cpu_halted(TEGRA2_A9_CORE3);
+        s->csr[TEGRA2_A9_CORE3].pwr_off_sts = tegra_cpu_is_powergated(TEGRA2_A9_CORE3);
+        ret = s->csr[TEGRA2_A9_CORE3].reg32;
         break;
     case COP_CSR_OFFSET:
         s->csr[TEGRA2_COP].halt = tegra_cpu_halted(TEGRA2_COP);
@@ -580,6 +596,8 @@ static void tegra_flow_csr_write(tegra_flow *s, hwaddr offset,
         switch (cpu_id) {
         case TEGRA2_A9_CORE0:
         case TEGRA2_A9_CORE1:
+        case TEGRA2_A9_CORE2:
+        case TEGRA2_A9_CORE3:
             if (s->csr[ tegra_sibling_cpu(cpu_id) ].intr_flag) {
                 break;
             }
@@ -607,6 +625,12 @@ static void tegra_flow_priv_write(void *opaque, hwaddr offset,
     case HALT_CPU1_EVENTS_OFFSET:
         tegra_flow_event_write(s, offset, value, TEGRA2_A9_CORE1);
         break;
+    case HALT_CPU2_EVENTS_OFFSET:
+        tegra_flow_event_write(s, offset, value, TEGRA2_A9_CORE2);
+        break;
+    case HALT_CPU3_EVENTS_OFFSET:
+        tegra_flow_event_write(s, offset, value, TEGRA2_A9_CORE3);
+        break;
     case HALT_COP_EVENTS_OFFSET:
         tegra_flow_event_write(s, offset, value, TEGRA2_COP);
         break;
@@ -616,6 +640,12 @@ static void tegra_flow_priv_write(void *opaque, hwaddr offset,
         break;
     case CPU1_CSR_OFFSET:
         tegra_flow_csr_write(s, offset, value, TEGRA2_A9_CORE1);
+        break;
+    case CPU2_CSR_OFFSET:
+        tegra_flow_csr_write(s, offset, value, TEGRA2_A9_CORE2);
+        break;
+    case CPU3_CSR_OFFSET:
+        tegra_flow_csr_write(s, offset, value, TEGRA2_A9_CORE3);
         break;
     case COP_CSR_OFFSET:
         tegra_flow_csr_write(s, offset, value, TEGRA2_COP);
@@ -638,8 +668,12 @@ static void tegra_flow_priv_reset(DeviceState *dev)
 
     s->halt_events[TEGRA2_A9_CORE0].reg32 = HALT_CPU_EVENTS_RESET;
     s->halt_events[TEGRA2_A9_CORE1].reg32 = HALT_CPU_EVENTS_RESET;
+    s->halt_events[TEGRA2_A9_CORE2].reg32 = HALT_CPU_EVENTS_RESET;
+    s->halt_events[TEGRA2_A9_CORE3].reg32 = HALT_CPU_EVENTS_RESET;
     s->csr[TEGRA2_A9_CORE0].reg32 = CPU_CSR_RESET;
     s->csr[TEGRA2_A9_CORE1].reg32 = CPU_CSR_RESET;
+    s->csr[TEGRA2_A9_CORE2].reg32 = CPU_CSR_RESET;
+    s->csr[TEGRA2_A9_CORE3].reg32 = CPU_CSR_RESET;
 
     s->halt_events[TEGRA2_COP].reg32 = HALT_COP_EVENTS_RESET;
     s->csr[TEGRA2_COP].reg32 = COP_CSR_RESET;

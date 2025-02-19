@@ -446,7 +446,9 @@ typedef union clk_cpu_cmplx_u {
         unsigned int undefined_bits_2_7:6;
         unsigned int cpu0_clk_stp:1;        /* 1 = CPU0 clock stop, 0 = CPU0 clock run */
         unsigned int cpu1_clk_stp:1;        /* 1 = CPU1 clock stop, 0 = CPU1 clock run */
-        unsigned int undefined_bits_10_31:22;
+        unsigned int cpu2_clk_stp:1;        /* 1 = CPU2 clock stop, 0 = CPU2 clock run */
+        unsigned int cpu3_clk_stp:1;        /* 1 = CPU3 clock stop, 0 = CPU3 clock run */
+        unsigned int undefined_bits_12_31:20;
     };
 
     uint32_t reg32;
@@ -1973,16 +1975,21 @@ typedef union rst_cpu_cmplx_set_u {
     struct {
         unsigned int set_cpureset0:1;       /* 1 = assert nCPURESET to CPU0 */
         unsigned int set_cpureset1:1;       /* 1 = assert nCPURESET to CPU1 */
-        unsigned int undefined_bits_2_3:2;
+        unsigned int set_cpureset2:1;       /* 1 = assert nCPURESET to CPU2 */
+        unsigned int set_cpureset3:1;       /* 1 = assert nCPURESET to CPU3 */
         unsigned int set_dereset0:1;        /* 1 = assert nDERESET to CPU0 */
         unsigned int set_dereset1:1;        /* 1 = assert nDERESET to CPU1 */
-        unsigned int undefined_bits_6_7:2;
+        unsigned int set_dereset2:1;        /* 1 = assert nDERESET to CPU2 */
+        unsigned int set_dereset3:1;        /* 1 = assert nDERESET to CPU3 */
         unsigned int set_wdreset0:1;        /* 1 = assert nWDRESET to CPU0 */
         unsigned int set_wdreset1:1;        /* 1 = assert nWDRESET to CPU1 */
-        unsigned int undefined_bits_10_11:2;
+        unsigned int set_wdreset2:1;        /* 1 = assert nWDRESET to CPU2 */
+        unsigned int set_wdreset3:1;        /* 1 = assert nWDRESET to CPU3 */
         unsigned int set_dbgreset0:1;       /* 1 = assert nDBGRESET to CPU0 */
         unsigned int set_dbgreset1:1;       /* 1 = assert nDBGRESET to CPU1 */
-        unsigned int undefined_bits_14_27:14;
+        unsigned int set_dbgreset2:1;       /* 1 = assert nDBGRESET to CPU2 */
+        unsigned int set_dbgreset3:1;       /* 1 = assert nDBGRESET to CPU3 */
+        unsigned int undefined_bits_16_27:12;
         unsigned int set_periphreset:1;     /* 1 = assert nPERIPHRESET to the CPU */
         unsigned int set_scureset:1;        /* 1 = assert nSCURESET to the SCU */
         unsigned int set_presetdbg:1;       /* 1 = assert nPRESETDBG to the coresight */
@@ -1998,16 +2005,21 @@ typedef union rst_cpu_cmplx_clr_u {
     struct {
         unsigned int clr_cpureset0:1;       /* 1 = deassert nCPURESET to CPU0 */
         unsigned int clr_cpureset1:1;       /* 1 = deassert nCPURESET to CPU1 */
-        unsigned int undefined_bits_2_3:2;
+        unsigned int clr_cpureset2:1;       /* 1 = deassert nCPURESET to CPU2 */
+        unsigned int clr_cpureset3:1;       /* 1 = deassert nCPURESET to CPU3 */
         unsigned int clr_dereset0:1;        /* 1 = deassert nDERESET to CPU0 */
         unsigned int clr_dereset1:1;        /* 1 = deassert nDERESET to CPU1 */
-        unsigned int undefined_bits_6_7:2;
+        unsigned int clr_dereset2:1;        /* 1 = deassert nDERESET to CPU2 */
+        unsigned int clr_dereset3:1;        /* 1 = deassert nDERESET to CPU3 */
         unsigned int clr_wdreset0:1;        /* 1 = deassert nWDRESET to CPU0 */
         unsigned int clr_wdreset1:1;        /* 1 = deassert nWDRESET to CPU1 */
-        unsigned int undefined_bits_10_11:2;
+        unsigned int clr_wdreset2:1;        /* 1 = deassert nWDRESET to CPU2 */
+        unsigned int clr_wdreset3:1;        /* 1 = deassert nWDRESET to CPU3 */
         unsigned int clr_dbgreset0:1;       /* 1 = deassert nDBGRESET to CPU0 */
         unsigned int clr_dbgreset1:1;       /* 1 = deassert nDBGRESET to CPU1 */
-        unsigned int undefined_bits_14_27:14;
+        unsigned int clr_dbgreset2:1;       /* 1 = deassert nDBGRESET to CPU2 */
+        unsigned int clr_dbgreset3:1;       /* 1 = deassert nDBGRESET to CPU3 */
+        unsigned int undefined_bits_16_27:12;
         unsigned int clr_periphreset:1;     /* 1 = deassert nPERIPHRESET to the CPU's interrupt/timer */
         unsigned int clr_scureset:1;        /* 1 = deassert nSCURESET to the SCU */
         unsigned int clr_presetdbg:1;       /* 1 = deassert nPRESETDBG to the coresight */

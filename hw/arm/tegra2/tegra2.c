@@ -181,6 +181,8 @@ static void tegra2_create_cpus(void)
 
     set_is_tegra_cpu(TEGRA2_A9_CORE0);
     set_is_tegra_cpu(TEGRA2_A9_CORE1);
+    set_is_tegra_cpu(TEGRA2_A9_CORE2);
+    set_is_tegra_cpu(TEGRA2_A9_CORE3);
     set_is_tegra_cpu(TEGRA2_COP);
 }
 
@@ -315,6 +317,8 @@ static void tegra2_init(MachineState *machine)
 
     sysbus_connect_irq(gic, TEGRA2_A9_CORE0, DIRQ_INT(ARM_CPU_IRQ));
     sysbus_connect_irq(gic, TEGRA2_A9_CORE1, DIRQ_INT(ARM_CPU_IRQ + 1));
+    sysbus_connect_irq(gic, TEGRA2_A9_CORE2, DIRQ_INT(ARM_CPU_IRQ + 2));
+    sysbus_connect_irq(gic, TEGRA2_A9_CORE3, DIRQ_INT(ARM_CPU_IRQ + 3));
 
     /* CPU IRQ+FIQ */
     sysbus_connect_irq(lic, 0, DIRQ_INT(ARM_CPU_IRQ + 2));
