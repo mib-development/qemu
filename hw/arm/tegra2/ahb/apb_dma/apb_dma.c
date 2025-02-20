@@ -2,6 +2,7 @@
  * ARM NVIDIA Tegra2 emulation.
  *
  * Copyright (c) 2014-2015 Dmitry Osipenko <digetx@gmail.com>
+ * Copyright (c) 2025 Iscle Gil <albertiscle9@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by the
@@ -25,15 +26,47 @@
 #include "iomap.h"
 #include "tegra_trace.h"
 
+#define MAX_CHANNELS 32
+
 #define TYPE_TEGRA_APB_DMA "tegra.apb_dma"
 #define TEGRA_APB_DMA(obj) OBJECT_CHECK(tegra_apb_dma, (obj), TYPE_TEGRA_APB_DMA)
 #define DEFINE_REG32(reg) reg##_t reg
 #define WR_MASKED(r, d, m)  r = (r & ~m##_WRMASK) | (d & m##_WRMASK)
 
+typedef struct tegra_apb_dma_channel_state {
+    qemu_irq irq;
+    DEFINE_REG32(channel_csr);
+    DEFINE_REG32(channel_sta);
+    DEFINE_REG32(channel_dma_byte_sta);
+    DEFINE_REG32(channel_ahb_ptr);
+    DEFINE_REG32(channel_ahb_seq);
+    DEFINE_REG32(channel_apb_ptr);
+    DEFINE_REG32(channel_apb_seq);
+} tegra_apb_dma_channel;
+
+static const VMStateDescription vmstate_tegra_apb_dma_channel = {
+    .name = "tegra.apb_dma.channel",
+    .version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(channel_csr.reg32, tegra_apb_dma_channel),
+        VMSTATE_UINT32(channel_sta.reg32, tegra_apb_dma_channel),
+        VMSTATE_UINT32(channel_dma_byte_sta.reg32, tegra_apb_dma_channel),
+        VMSTATE_UINT32(channel_ahb_ptr.reg32, tegra_apb_dma_channel),
+        VMSTATE_UINT32(channel_ahb_seq.reg32, tegra_apb_dma_channel),
+        VMSTATE_UINT32(channel_apb_ptr.reg32, tegra_apb_dma_channel),
+        VMSTATE_UINT32(channel_apb_seq.reg32, tegra_apb_dma_channel),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 typedef struct tegra_apb_dma_state {
+    /*< private >*/
     SysBusDevice parent_obj;
 
+    /*< public >*/
     MemoryRegion iomem;
+    qemu_irq irqs[2];
+
     DEFINE_REG32(command);
     DEFINE_REG32(status);
     DEFINE_REG32(requestors_tx);
@@ -45,102 +78,10 @@ typedef struct tegra_apb_dma_state {
     DEFINE_REG32(irq_mask_set);
     DEFINE_REG32(irq_mask_clr);
     DEFINE_REG32(trig_reg);
-    DEFINE_REG32(channel_0_csr);
-    DEFINE_REG32(channel_0_sta);
-    DEFINE_REG32(channel_0_ahb_ptr);
-    DEFINE_REG32(channel_0_ahb_seq);
-    DEFINE_REG32(channel_0_apb_ptr);
-    DEFINE_REG32(channel_0_apb_seq);
-    DEFINE_REG32(channel_1_csr);
-    DEFINE_REG32(channel_1_sta);
-    DEFINE_REG32(channel_1_ahb_ptr);
-    DEFINE_REG32(channel_1_ahb_seq);
-    DEFINE_REG32(channel_1_apb_ptr);
-    DEFINE_REG32(channel_1_apb_seq);
-    DEFINE_REG32(channel_2_csr);
-    DEFINE_REG32(channel_2_sta);
-    DEFINE_REG32(channel_2_ahb_ptr);
-    DEFINE_REG32(channel_2_ahb_seq);
-    DEFINE_REG32(channel_2_apb_ptr);
-    DEFINE_REG32(channel_2_apb_seq);
-    DEFINE_REG32(channel_3_csr);
-    DEFINE_REG32(channel_3_sta);
-    DEFINE_REG32(channel_3_ahb_ptr);
-    DEFINE_REG32(channel_3_ahb_seq);
-    DEFINE_REG32(channel_3_apb_ptr);
-    DEFINE_REG32(channel_3_apb_seq);
-    DEFINE_REG32(channel_4_csr);
-    DEFINE_REG32(channel_4_sta);
-    DEFINE_REG32(channel_4_ahb_ptr);
-    DEFINE_REG32(channel_4_ahb_seq);
-    DEFINE_REG32(channel_4_apb_ptr);
-    DEFINE_REG32(channel_4_apb_seq);
-    DEFINE_REG32(channel_5_csr);
-    DEFINE_REG32(channel_5_sta);
-    DEFINE_REG32(channel_5_ahb_ptr);
-    DEFINE_REG32(channel_5_ahb_seq);
-    DEFINE_REG32(channel_5_apb_ptr);
-    DEFINE_REG32(channel_5_apb_seq);
-    DEFINE_REG32(channel_6_csr);
-    DEFINE_REG32(channel_6_sta);
-    DEFINE_REG32(channel_6_ahb_ptr);
-    DEFINE_REG32(channel_6_ahb_seq);
-    DEFINE_REG32(channel_6_apb_ptr);
-    DEFINE_REG32(channel_6_apb_seq);
-    DEFINE_REG32(channel_7_csr);
-    DEFINE_REG32(channel_7_sta);
-    DEFINE_REG32(channel_7_ahb_ptr);
-    DEFINE_REG32(channel_7_ahb_seq);
-    DEFINE_REG32(channel_7_apb_ptr);
-    DEFINE_REG32(channel_7_apb_seq);
-    DEFINE_REG32(channel_8_csr);
-    DEFINE_REG32(channel_8_sta);
-    DEFINE_REG32(channel_8_ahb_ptr);
-    DEFINE_REG32(channel_8_ahb_seq);
-    DEFINE_REG32(channel_8_apb_ptr);
-    DEFINE_REG32(channel_8_apb_seq);
-    DEFINE_REG32(channel_9_csr);
-    DEFINE_REG32(channel_9_sta);
-    DEFINE_REG32(channel_9_ahb_ptr);
-    DEFINE_REG32(channel_9_ahb_seq);
-    DEFINE_REG32(channel_9_apb_ptr);
-    DEFINE_REG32(channel_9_apb_seq);
-    DEFINE_REG32(channel_10_csr);
-    DEFINE_REG32(channel_10_sta);
-    DEFINE_REG32(channel_10_ahb_ptr);
-    DEFINE_REG32(channel_10_ahb_seq);
-    DEFINE_REG32(channel_10_apb_ptr);
-    DEFINE_REG32(channel_10_apb_seq);
-    DEFINE_REG32(channel_11_csr);
-    DEFINE_REG32(channel_11_sta);
-    DEFINE_REG32(channel_11_ahb_ptr);
-    DEFINE_REG32(channel_11_ahb_seq);
-    DEFINE_REG32(channel_11_apb_ptr);
-    DEFINE_REG32(channel_11_apb_seq);
-    DEFINE_REG32(channel_12_csr);
-    DEFINE_REG32(channel_12_sta);
-    DEFINE_REG32(channel_12_ahb_ptr);
-    DEFINE_REG32(channel_12_ahb_seq);
-    DEFINE_REG32(channel_12_apb_ptr);
-    DEFINE_REG32(channel_12_apb_seq);
-    DEFINE_REG32(channel_13_csr);
-    DEFINE_REG32(channel_13_sta);
-    DEFINE_REG32(channel_13_ahb_ptr);
-    DEFINE_REG32(channel_13_ahb_seq);
-    DEFINE_REG32(channel_13_apb_ptr);
-    DEFINE_REG32(channel_13_apb_seq);
-    DEFINE_REG32(channel_14_csr);
-    DEFINE_REG32(channel_14_sta);
-    DEFINE_REG32(channel_14_ahb_ptr);
-    DEFINE_REG32(channel_14_ahb_seq);
-    DEFINE_REG32(channel_14_apb_ptr);
-    DEFINE_REG32(channel_14_apb_seq);
-    DEFINE_REG32(channel_15_csr);
-    DEFINE_REG32(channel_15_sta);
-    DEFINE_REG32(channel_15_ahb_ptr);
-    DEFINE_REG32(channel_15_ahb_seq);
-    DEFINE_REG32(channel_15_apb_ptr);
-    DEFINE_REG32(channel_15_apb_seq);
+    DEFINE_REG32(channel_trig_reg);
+    DEFINE_REG32(dma_status);
+    DEFINE_REG32(channel_en_reg);
+    tegra_apb_dma_channel channels[MAX_CHANNELS];
 } tegra_apb_dma;
 
 static const VMStateDescription vmstate_tegra_apb_dma = {
@@ -159,105 +100,52 @@ static const VMStateDescription vmstate_tegra_apb_dma = {
         VMSTATE_UINT32(irq_mask_set.reg32, tegra_apb_dma),
         VMSTATE_UINT32(irq_mask_clr.reg32, tegra_apb_dma),
         VMSTATE_UINT32(trig_reg.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_0_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_0_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_0_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_0_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_0_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_0_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_1_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_1_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_1_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_1_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_1_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_1_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_2_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_2_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_2_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_2_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_2_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_2_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_3_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_3_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_3_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_3_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_3_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_3_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_4_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_4_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_4_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_4_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_4_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_4_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_5_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_5_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_5_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_5_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_5_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_5_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_6_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_6_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_6_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_6_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_6_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_6_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_7_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_7_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_7_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_7_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_7_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_7_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_8_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_8_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_8_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_8_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_8_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_8_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_9_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_9_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_9_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_9_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_9_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_9_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_10_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_10_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_10_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_10_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_10_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_10_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_11_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_11_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_11_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_11_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_11_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_11_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_12_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_12_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_12_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_12_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_12_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_12_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_13_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_13_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_13_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_13_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_13_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_13_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_14_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_14_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_14_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_14_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_14_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_14_apb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_15_csr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_15_sta.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_15_ahb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_15_ahb_seq.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_15_apb_ptr.reg32, tegra_apb_dma),
-        VMSTATE_UINT32(channel_15_apb_seq.reg32, tegra_apb_dma),
+        VMSTATE_UINT32(channel_trig_reg.reg32, tegra_apb_dma),
+        VMSTATE_UINT32(dma_status.reg32, tegra_apb_dma),
+        VMSTATE_UINT32(channel_en_reg.reg32, tegra_apb_dma),
+        VMSTATE_STRUCT_ARRAY(channels, tegra_apb_dma, MAX_CHANNELS, 0,
+                             vmstate_tegra_apb_dma_channel, tegra_apb_dma_channel),
         VMSTATE_END_OF_LIST()
     }
 };
+
+static inline uint32_t tegra_apb_dma_get_mask(void *opaque)
+{
+    tegra_apb_dma *s = opaque;
+
+    return s->irq_mask_set.reg32 & ~s->irq_mask_clr.reg32;
+}
+
+static void tegra_apb_dma_update_irq(void *opaque)
+{
+    tegra_apb_dma *s = opaque;
+    uint32_t irq_sta_cpu = 0;
+    uint32_t irq_sta_cop = 0;
+    uint32_t dma_status = 0;
+
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        tegra_apb_dma_channel *channel = &s->channels[i];
+        int intr = channel->channel_csr.ie_eoc && channel->channel_sta.ise_eoc;
+        
+        if (intr) {
+            dma_status |= BIT(i);
+            if (channel->channel_ahb_seq.intr_enb) {
+                irq_sta_cpu |= BIT(i);
+            } else {
+                irq_sta_cop |= BIT(i);
+            }
+        }
+
+        qemu_set_irq(channel->irq, intr);
+    }
+
+    s->irq_sta_cpu.reg32 = irq_sta_cpu;
+    s->irq_sta_cop.reg32 = irq_sta_cop;
+    s->dma_status.reg32 = dma_status;
+
+    qemu_set_irq(s->irqs[0], (s->irq_sta_cpu.reg32 & tegra_apb_dma_get_mask(s)) != 0);
+    qemu_set_irq(s->irqs[1], (s->irq_sta_cop.reg32 & tegra_apb_dma_get_mask(s)) != 0);
+}
 
 static uint64_t tegra_apb_dma_priv_read(void *opaque, hwaddr offset,
                                         unsigned size)
@@ -282,13 +170,13 @@ static uint64_t tegra_apb_dma_priv_read(void *opaque, hwaddr offset,
         ret = s->cntrl_reg.reg32;
         break;
     case IRQ_STA_CPU_OFFSET:
-        ret = s->irq_sta_cpu.reg32;
+        ret = s->irq_sta_cpu.reg32 & tegra_apb_dma_get_mask(s);
         break;
     case IRQ_STA_COP_OFFSET:
-        ret = s->irq_sta_cop.reg32;
+        ret = s->irq_sta_cop.reg32 & tegra_apb_dma_get_mask(s);
         break;
     case IRQ_MASK_OFFSET:
-        ret = s->irq_mask.reg32;
+        ret = s->irq_mask.reg32 & tegra_apb_dma_get_mask(s);
         break;
     case IRQ_MASK_SET_OFFSET:
         ret = s->irq_mask_set.reg32;
@@ -299,293 +187,43 @@ static uint64_t tegra_apb_dma_priv_read(void *opaque, hwaddr offset,
     case TRIG_REG_OFFSET:
         ret = s->trig_reg.reg32;
         break;
-    case CHANNEL_0_CSR_OFFSET:
-        ret = s->channel_0_csr.reg32;
-        break;
-    case CHANNEL_0_STA_OFFSET:
-        ret = s->channel_0_sta.reg32;
-        break;
-    case CHANNEL_0_AHB_PTR_OFFSET:
-        ret = s->channel_0_ahb_ptr.reg32;
-        break;
-    case CHANNEL_0_AHB_SEQ_OFFSET:
-        ret = s->channel_0_ahb_seq.reg32;
-        break;
-    case CHANNEL_0_APB_PTR_OFFSET:
-        ret = s->channel_0_apb_ptr.reg32;
-        break;
-    case CHANNEL_0_APB_SEQ_OFFSET:
-        ret = s->channel_0_apb_seq.reg32;
-        break;
-    case CHANNEL_1_CSR_OFFSET:
-        ret = s->channel_1_csr.reg32;
-        break;
-    case CHANNEL_1_STA_OFFSET:
-        ret = s->channel_1_sta.reg32;
-        break;
-    case CHANNEL_1_AHB_PTR_OFFSET:
-        ret = s->channel_1_ahb_ptr.reg32;
-        break;
-    case CHANNEL_1_AHB_SEQ_OFFSET:
-        ret = s->channel_1_ahb_seq.reg32;
-        break;
-    case CHANNEL_1_APB_PTR_OFFSET:
-        ret = s->channel_1_apb_ptr.reg32;
-        break;
-    case CHANNEL_1_APB_SEQ_OFFSET:
-        ret = s->channel_1_apb_seq.reg32;
-        break;
-    case CHANNEL_2_CSR_OFFSET:
-        ret = s->channel_2_csr.reg32;
-        break;
-    case CHANNEL_2_STA_OFFSET:
-        ret = s->channel_2_sta.reg32;
-        break;
-    case CHANNEL_2_AHB_PTR_OFFSET:
-        ret = s->channel_2_ahb_ptr.reg32;
-        break;
-    case CHANNEL_2_AHB_SEQ_OFFSET:
-        ret = s->channel_2_ahb_seq.reg32;
-        break;
-    case CHANNEL_2_APB_PTR_OFFSET:
-        ret = s->channel_2_apb_ptr.reg32;
-        break;
-    case CHANNEL_2_APB_SEQ_OFFSET:
-        ret = s->channel_2_apb_seq.reg32;
-        break;
-    case CHANNEL_3_CSR_OFFSET:
-        ret = s->channel_3_csr.reg32;
-        break;
-    case CHANNEL_3_STA_OFFSET:
-        ret = s->channel_3_sta.reg32;
-        break;
-    case CHANNEL_3_AHB_PTR_OFFSET:
-        ret = s->channel_3_ahb_ptr.reg32;
-        break;
-    case CHANNEL_3_AHB_SEQ_OFFSET:
-        ret = s->channel_3_ahb_seq.reg32;
-        break;
-    case CHANNEL_3_APB_PTR_OFFSET:
-        ret = s->channel_3_apb_ptr.reg32;
-        break;
-    case CHANNEL_3_APB_SEQ_OFFSET:
-        ret = s->channel_3_apb_seq.reg32;
-        break;
-    case CHANNEL_4_CSR_OFFSET:
-        ret = s->channel_4_csr.reg32;
-        break;
-    case CHANNEL_4_STA_OFFSET:
-        ret = s->channel_4_sta.reg32;
-        break;
-    case CHANNEL_4_AHB_PTR_OFFSET:
-        ret = s->channel_4_ahb_ptr.reg32;
-        break;
-    case CHANNEL_4_AHB_SEQ_OFFSET:
-        ret = s->channel_4_ahb_seq.reg32;
-        break;
-    case CHANNEL_4_APB_PTR_OFFSET:
-        ret = s->channel_4_apb_ptr.reg32;
-        break;
-    case CHANNEL_4_APB_SEQ_OFFSET:
-        ret = s->channel_4_apb_seq.reg32;
-        break;
-    case CHANNEL_5_CSR_OFFSET:
-        ret = s->channel_5_csr.reg32;
-        break;
-    case CHANNEL_5_STA_OFFSET:
-        ret = s->channel_5_sta.reg32;
-        break;
-    case CHANNEL_5_AHB_PTR_OFFSET:
-        ret = s->channel_5_ahb_ptr.reg32;
-        break;
-    case CHANNEL_5_AHB_SEQ_OFFSET:
-        ret = s->channel_5_ahb_seq.reg32;
-        break;
-    case CHANNEL_5_APB_PTR_OFFSET:
-        ret = s->channel_5_apb_ptr.reg32;
-        break;
-    case CHANNEL_5_APB_SEQ_OFFSET:
-        ret = s->channel_5_apb_seq.reg32;
-        break;
-    case CHANNEL_6_CSR_OFFSET:
-        ret = s->channel_6_csr.reg32;
-        break;
-    case CHANNEL_6_STA_OFFSET:
-        ret = s->channel_6_sta.reg32;
-        break;
-    case CHANNEL_6_AHB_PTR_OFFSET:
-        ret = s->channel_6_ahb_ptr.reg32;
-        break;
-    case CHANNEL_6_AHB_SEQ_OFFSET:
-        ret = s->channel_6_ahb_seq.reg32;
-        break;
-    case CHANNEL_6_APB_PTR_OFFSET:
-        ret = s->channel_6_apb_ptr.reg32;
-        break;
-    case CHANNEL_6_APB_SEQ_OFFSET:
-        ret = s->channel_6_apb_seq.reg32;
-        break;
-    case CHANNEL_7_CSR_OFFSET:
-        ret = s->channel_7_csr.reg32;
-        break;
-    case CHANNEL_7_STA_OFFSET:
-        ret = s->channel_7_sta.reg32;
-        break;
-    case CHANNEL_7_AHB_PTR_OFFSET:
-        ret = s->channel_7_ahb_ptr.reg32;
-        break;
-    case CHANNEL_7_AHB_SEQ_OFFSET:
-        ret = s->channel_7_ahb_seq.reg32;
-        break;
-    case CHANNEL_7_APB_PTR_OFFSET:
-        ret = s->channel_7_apb_ptr.reg32;
-        break;
-    case CHANNEL_7_APB_SEQ_OFFSET:
-        ret = s->channel_7_apb_seq.reg32;
-        break;
-    case CHANNEL_8_CSR_OFFSET:
-        ret = s->channel_8_csr.reg32;
-        break;
-    case CHANNEL_8_STA_OFFSET:
-        ret = s->channel_8_sta.reg32;
-        break;
-    case CHANNEL_8_AHB_PTR_OFFSET:
-        ret = s->channel_8_ahb_ptr.reg32;
-        break;
-    case CHANNEL_8_AHB_SEQ_OFFSET:
-        ret = s->channel_8_ahb_seq.reg32;
-        break;
-    case CHANNEL_8_APB_PTR_OFFSET:
-        ret = s->channel_8_apb_ptr.reg32;
-        break;
-    case CHANNEL_8_APB_SEQ_OFFSET:
-        ret = s->channel_8_apb_seq.reg32;
-        break;
-    case CHANNEL_9_CSR_OFFSET:
-        ret = s->channel_9_csr.reg32;
-        break;
-    case CHANNEL_9_STA_OFFSET:
-        ret = s->channel_9_sta.reg32;
-        break;
-    case CHANNEL_9_AHB_PTR_OFFSET:
-        ret = s->channel_9_ahb_ptr.reg32;
-        break;
-    case CHANNEL_9_AHB_SEQ_OFFSET:
-        ret = s->channel_9_ahb_seq.reg32;
-        break;
-    case CHANNEL_9_APB_PTR_OFFSET:
-        ret = s->channel_9_apb_ptr.reg32;
-        break;
-    case CHANNEL_9_APB_SEQ_OFFSET:
-        ret = s->channel_9_apb_seq.reg32;
-        break;
-    case CHANNEL_10_CSR_OFFSET:
-        ret = s->channel_10_csr.reg32;
-        break;
-    case CHANNEL_10_STA_OFFSET:
-        ret = s->channel_10_sta.reg32;
-        break;
-    case CHANNEL_10_AHB_PTR_OFFSET:
-        ret = s->channel_10_ahb_ptr.reg32;
-        break;
-    case CHANNEL_10_AHB_SEQ_OFFSET:
-        ret = s->channel_10_ahb_seq.reg32;
-        break;
-    case CHANNEL_10_APB_PTR_OFFSET:
-        ret = s->channel_10_apb_ptr.reg32;
-        break;
-    case CHANNEL_10_APB_SEQ_OFFSET:
-        ret = s->channel_10_apb_seq.reg32;
-        break;
-    case CHANNEL_11_CSR_OFFSET:
-        ret = s->channel_11_csr.reg32;
-        break;
-    case CHANNEL_11_STA_OFFSET:
-        ret = s->channel_11_sta.reg32;
-        break;
-    case CHANNEL_11_AHB_PTR_OFFSET:
-        ret = s->channel_11_ahb_ptr.reg32;
-        break;
-    case CHANNEL_11_AHB_SEQ_OFFSET:
-        ret = s->channel_11_ahb_seq.reg32;
-        break;
-    case CHANNEL_11_APB_PTR_OFFSET:
-        ret = s->channel_11_apb_ptr.reg32;
-        break;
-    case CHANNEL_11_APB_SEQ_OFFSET:
-        ret = s->channel_11_apb_seq.reg32;
-        break;
-    case CHANNEL_12_CSR_OFFSET:
-        ret = s->channel_12_csr.reg32;
-        break;
-    case CHANNEL_12_STA_OFFSET:
-        ret = s->channel_12_sta.reg32;
-        break;
-    case CHANNEL_12_AHB_PTR_OFFSET:
-        ret = s->channel_12_ahb_ptr.reg32;
-        break;
-    case CHANNEL_12_AHB_SEQ_OFFSET:
-        ret = s->channel_12_ahb_seq.reg32;
-        break;
-    case CHANNEL_12_APB_PTR_OFFSET:
-        ret = s->channel_12_apb_ptr.reg32;
-        break;
-    case CHANNEL_12_APB_SEQ_OFFSET:
-        ret = s->channel_12_apb_seq.reg32;
-        break;
-    case CHANNEL_13_CSR_OFFSET:
-        ret = s->channel_13_csr.reg32;
-        break;
-    case CHANNEL_13_STA_OFFSET:
-        ret = s->channel_13_sta.reg32;
-        break;
-    case CHANNEL_13_AHB_PTR_OFFSET:
-        ret = s->channel_13_ahb_ptr.reg32;
-        break;
-    case CHANNEL_13_AHB_SEQ_OFFSET:
-        ret = s->channel_13_ahb_seq.reg32;
-        break;
-    case CHANNEL_13_APB_PTR_OFFSET:
-        ret = s->channel_13_apb_ptr.reg32;
-        break;
-    case CHANNEL_13_APB_SEQ_OFFSET:
-        ret = s->channel_13_apb_seq.reg32;
-        break;
-    case CHANNEL_14_CSR_OFFSET:
-        ret = s->channel_14_csr.reg32;
-        break;
-    case CHANNEL_14_STA_OFFSET:
-        ret = s->channel_14_sta.reg32;
-        break;
-    case CHANNEL_14_AHB_PTR_OFFSET:
-        ret = s->channel_14_ahb_ptr.reg32;
-        break;
-    case CHANNEL_14_AHB_SEQ_OFFSET:
-        ret = s->channel_14_ahb_seq.reg32;
-        break;
-    case CHANNEL_14_APB_PTR_OFFSET:
-        ret = s->channel_14_apb_ptr.reg32;
-        break;
-    case CHANNEL_14_APB_SEQ_OFFSET:
-        ret = s->channel_14_apb_seq.reg32;
-        break;
-    case CHANNEL_15_CSR_OFFSET:
-        ret = s->channel_15_csr.reg32;
-        break;
-    case CHANNEL_15_STA_OFFSET:
-        ret = s->channel_15_sta.reg32;
-        break;
-    case CHANNEL_15_AHB_PTR_OFFSET:
-        ret = s->channel_15_ahb_ptr.reg32;
-        break;
-    case CHANNEL_15_AHB_SEQ_OFFSET:
-        ret = s->channel_15_ahb_seq.reg32;
-        break;
-    case CHANNEL_15_APB_PTR_OFFSET:
-        ret = s->channel_15_apb_ptr.reg32;
-        break;
-    case CHANNEL_15_APB_SEQ_OFFSET:
-        ret = s->channel_15_apb_seq.reg32;
+    case CHANNEL_TRIG_REG_OFFSET:
+        ret = s->channel_trig_reg.reg32;
+        break;
+    case DMA_STATUS_OFFSET:
+        ret = s->dma_status.reg32;
+        break;
+    case CHANNEL_EN_REG_OFFSET:
+        ret = s->channel_en_reg.reg32;
+        break;
+    case CHANNEL_CSR_OFFSET...CHANNEL_APB_SEQ_OFFSET * MAX_CHANNELS:
+        int channel = (offset - CHANNEL_CSR_OFFSET) / TEGRA_APB_DMA_CH_SIZE;
+        int reg = (offset - CHANNEL_CSR_OFFSET) % TEGRA_APB_DMA_CH_SIZE;
+        switch (reg) {
+        case CHANNEL_CSR_OFFSET:
+            ret = s->channels[channel].channel_csr.reg32;
+            break;
+        case CHANNEL_STA_OFFSET:
+            ret = s->channels[channel].channel_sta.reg32;
+            break;
+        case CHANNEL_DMA_BYTE_STA_OFFSET:
+            ret = s->channels[channel].channel_dma_byte_sta.reg32;
+            break;
+        case CHANNEL_AHB_PTR_OFFSET:
+            ret = s->channels[channel].channel_ahb_ptr.reg32;
+            break;
+        case CHANNEL_AHB_SEQ_OFFSET:
+            ret = s->channels[channel].channel_ahb_seq.reg32;
+            break;
+        case CHANNEL_APB_PTR_OFFSET:
+            ret = s->channels[channel].channel_apb_ptr.reg32;
+            break;
+        case CHANNEL_APB_SEQ_OFFSET:
+            ret = s->channels[channel].channel_apb_seq.reg32;
+            break;
+        default:
+            break;
+        }
         break;
     default:
         break;
@@ -613,394 +251,79 @@ static void tegra_apb_dma_priv_write(void *opaque, hwaddr offset,
     case IRQ_MASK_SET_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->irq_mask_set.reg32, value);
         s->irq_mask_set.reg32 = value;
+        tegra_apb_dma_update_irq(s);
         break;
     case IRQ_MASK_CLR_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->irq_mask_clr.reg32, value);
         s->irq_mask_clr.reg32 = value;
-        break;
-    case CHANNEL_0_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_0_csr.reg32, value);
-        s->channel_0_csr.reg32 = value;
-        break;
-    case CHANNEL_0_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_0_sta.reg32, value & CHANNEL_0_STA_WRMASK);
-WR_MASKED(       s->channel_0_sta.reg32, value, CHANNEL_0_STA);
-        break;
-    case CHANNEL_0_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_0_ahb_ptr.reg32, value);
-        s->channel_0_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_0_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_0_ahb_seq.reg32, value);
-        s->channel_0_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_0_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_0_apb_ptr.reg32, value);
-        s->channel_0_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_0_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_0_apb_seq.reg32, value);
-        s->channel_0_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_1_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_1_csr.reg32, value);
-        s->channel_1_csr.reg32 = value;
-        break;
-    case CHANNEL_1_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_1_sta.reg32, value & CHANNEL_1_STA_WRMASK);
-WR_MASKED(       s->channel_1_sta.reg32, value, CHANNEL_1_STA);
-        break;
-    case CHANNEL_1_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_1_ahb_ptr.reg32, value);
-        s->channel_1_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_1_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_1_ahb_seq.reg32, value);
-        s->channel_1_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_1_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_1_apb_ptr.reg32, value);
-        s->channel_1_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_1_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_1_apb_seq.reg32, value);
-        s->channel_1_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_2_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_2_csr.reg32, value);
-        s->channel_2_csr.reg32 = value;
-        break;
-    case CHANNEL_2_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_2_sta.reg32, value & CHANNEL_2_STA_WRMASK);
-WR_MASKED(       s->channel_2_sta.reg32, value, CHANNEL_2_STA);
-        break;
-    case CHANNEL_2_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_2_ahb_ptr.reg32, value);
-        s->channel_2_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_2_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_2_ahb_seq.reg32, value);
-        s->channel_2_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_2_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_2_apb_ptr.reg32, value);
-        s->channel_2_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_2_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_2_apb_seq.reg32, value);
-        s->channel_2_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_3_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_3_csr.reg32, value);
-        s->channel_3_csr.reg32 = value;
-        break;
-    case CHANNEL_3_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_3_sta.reg32, value & CHANNEL_3_STA_WRMASK);
-WR_MASKED(       s->channel_3_sta.reg32, value, CHANNEL_3_STA);
-        break;
-    case CHANNEL_3_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_3_ahb_ptr.reg32, value);
-        s->channel_3_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_3_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_3_ahb_seq.reg32, value);
-        s->channel_3_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_3_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_3_apb_ptr.reg32, value);
-        s->channel_3_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_3_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_3_apb_seq.reg32, value);
-        s->channel_3_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_4_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_4_csr.reg32, value);
-        s->channel_4_csr.reg32 = value;
-        break;
-    case CHANNEL_4_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_4_sta.reg32, value & CHANNEL_4_STA_WRMASK);
-WR_MASKED(       s->channel_4_sta.reg32, value, CHANNEL_4_STA);
-        break;
-    case CHANNEL_4_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_4_ahb_ptr.reg32, value);
-        s->channel_4_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_4_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_4_ahb_seq.reg32, value);
-        s->channel_4_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_4_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_4_apb_ptr.reg32, value);
-        s->channel_4_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_4_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_4_apb_seq.reg32, value);
-        s->channel_4_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_5_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_5_csr.reg32, value);
-        s->channel_5_csr.reg32 = value;
-        break;
-    case CHANNEL_5_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_5_sta.reg32, value & CHANNEL_5_STA_WRMASK);
-WR_MASKED(       s->channel_5_sta.reg32, value, CHANNEL_5_STA);
-        break;
-    case CHANNEL_5_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_5_ahb_ptr.reg32, value);
-        s->channel_5_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_5_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_5_ahb_seq.reg32, value);
-        s->channel_5_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_5_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_5_apb_ptr.reg32, value);
-        s->channel_5_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_5_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_5_apb_seq.reg32, value);
-        s->channel_5_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_6_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_6_csr.reg32, value);
-        s->channel_6_csr.reg32 = value;
-        break;
-    case CHANNEL_6_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_6_sta.reg32, value & CHANNEL_6_STA_WRMASK);
-WR_MASKED(       s->channel_6_sta.reg32, value, CHANNEL_6_STA);
-        break;
-    case CHANNEL_6_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_6_ahb_ptr.reg32, value);
-        s->channel_6_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_6_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_6_ahb_seq.reg32, value);
-        s->channel_6_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_6_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_6_apb_ptr.reg32, value);
-        s->channel_6_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_6_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_6_apb_seq.reg32, value);
-        s->channel_6_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_7_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_7_csr.reg32, value);
-        s->channel_7_csr.reg32 = value;
-        break;
-    case CHANNEL_7_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_7_sta.reg32, value & CHANNEL_7_STA_WRMASK);
-WR_MASKED(       s->channel_7_sta.reg32, value, CHANNEL_7_STA);
-        break;
-    case CHANNEL_7_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_7_ahb_ptr.reg32, value);
-        s->channel_7_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_7_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_7_ahb_seq.reg32, value);
-        s->channel_7_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_7_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_7_apb_ptr.reg32, value);
-        s->channel_7_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_7_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_7_apb_seq.reg32, value);
-        s->channel_7_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_8_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_8_csr.reg32, value);
-        s->channel_8_csr.reg32 = value;
-        break;
-    case CHANNEL_8_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_8_sta.reg32, value & CHANNEL_8_STA_WRMASK);
-WR_MASKED(       s->channel_8_sta.reg32, value, CHANNEL_8_STA);
-        break;
-    case CHANNEL_8_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_8_ahb_ptr.reg32, value);
-        s->channel_8_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_8_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_8_ahb_seq.reg32, value);
-        s->channel_8_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_8_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_8_apb_ptr.reg32, value);
-        s->channel_8_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_8_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_8_apb_seq.reg32, value);
-        s->channel_8_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_9_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_9_csr.reg32, value);
-        s->channel_9_csr.reg32 = value;
-        break;
-    case CHANNEL_9_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_9_sta.reg32, value & CHANNEL_9_STA_WRMASK);
-WR_MASKED(       s->channel_9_sta.reg32, value, CHANNEL_9_STA);
-        break;
-    case CHANNEL_9_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_9_ahb_ptr.reg32, value);
-        s->channel_9_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_9_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_9_ahb_seq.reg32, value);
-        s->channel_9_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_9_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_9_apb_ptr.reg32, value);
-        s->channel_9_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_9_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_9_apb_seq.reg32, value);
-        s->channel_9_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_10_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_10_csr.reg32, value);
-        s->channel_10_csr.reg32 = value;
-        break;
-    case CHANNEL_10_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_10_sta.reg32, value & CHANNEL_10_STA_WRMASK);
-WR_MASKED(       s->channel_10_sta.reg32, value, CHANNEL_10_STA);
-        break;
-    case CHANNEL_10_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_10_ahb_ptr.reg32, value);
-        s->channel_10_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_10_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_10_ahb_seq.reg32, value);
-        s->channel_10_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_10_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_10_apb_ptr.reg32, value);
-        s->channel_10_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_10_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_10_apb_seq.reg32, value);
-        s->channel_10_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_11_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_11_csr.reg32, value);
-        s->channel_11_csr.reg32 = value;
-        break;
-    case CHANNEL_11_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_11_sta.reg32, value & CHANNEL_11_STA_WRMASK);
-WR_MASKED(       s->channel_11_sta.reg32, value, CHANNEL_11_STA);
-        break;
-    case CHANNEL_11_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_11_ahb_ptr.reg32, value);
-        s->channel_11_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_11_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_11_ahb_seq.reg32, value);
-        s->channel_11_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_11_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_11_apb_ptr.reg32, value);
-        s->channel_11_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_11_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_11_apb_seq.reg32, value);
-        s->channel_11_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_12_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_12_csr.reg32, value);
-        s->channel_12_csr.reg32 = value;
-        break;
-    case CHANNEL_12_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_12_sta.reg32, value & CHANNEL_12_STA_WRMASK);
-WR_MASKED(       s->channel_12_sta.reg32, value, CHANNEL_12_STA);
-        break;
-    case CHANNEL_12_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_12_ahb_ptr.reg32, value);
-        s->channel_12_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_12_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_12_ahb_seq.reg32, value);
-        s->channel_12_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_12_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_12_apb_ptr.reg32, value);
-        s->channel_12_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_12_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_12_apb_seq.reg32, value);
-        s->channel_12_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_13_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_13_csr.reg32, value);
-        s->channel_13_csr.reg32 = value;
-        break;
-    case CHANNEL_13_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_13_sta.reg32, value & CHANNEL_13_STA_WRMASK);
-WR_MASKED(       s->channel_13_sta.reg32, value, CHANNEL_13_STA);
-        break;
-    case CHANNEL_13_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_13_ahb_ptr.reg32, value);
-        s->channel_13_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_13_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_13_ahb_seq.reg32, value);
-        s->channel_13_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_13_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_13_apb_ptr.reg32, value);
-        s->channel_13_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_13_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_13_apb_seq.reg32, value);
-        s->channel_13_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_14_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_14_csr.reg32, value);
-        s->channel_14_csr.reg32 = value;
-        break;
-    case CHANNEL_14_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_14_sta.reg32, value & CHANNEL_14_STA_WRMASK);
-WR_MASKED(       s->channel_14_sta.reg32, value, CHANNEL_14_STA);
-        break;
-    case CHANNEL_14_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_14_ahb_ptr.reg32, value);
-        s->channel_14_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_14_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_14_ahb_seq.reg32, value);
-        s->channel_14_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_14_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_14_apb_ptr.reg32, value);
-        s->channel_14_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_14_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_14_apb_seq.reg32, value);
-        s->channel_14_apb_seq.reg32 = value;
-        break;
-    case CHANNEL_15_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_15_csr.reg32, value);
-        s->channel_15_csr.reg32 = value;
-        break;
-    case CHANNEL_15_STA_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_15_sta.reg32, value & CHANNEL_15_STA_WRMASK);
-WR_MASKED(       s->channel_15_sta.reg32, value, CHANNEL_15_STA);
-        break;
-    case CHANNEL_15_AHB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_15_ahb_ptr.reg32, value);
-        s->channel_15_ahb_ptr.reg32 = value;
-        break;
-    case CHANNEL_15_AHB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_15_ahb_seq.reg32, value);
-        s->channel_15_ahb_seq.reg32 = value;
-        break;
-    case CHANNEL_15_APB_PTR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_15_apb_ptr.reg32, value);
-        s->channel_15_apb_ptr.reg32 = value;
-        break;
-    case CHANNEL_15_APB_SEQ_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->channel_15_apb_seq.reg32, value);
-        s->channel_15_apb_seq.reg32 = value;
+        tegra_apb_dma_update_irq(s);
+        break;
+    case TRIG_REG_OFFSET:
+        TRACE_WRITE(s->iomem.addr, offset, s->trig_reg.reg32, value);
+        s->trig_reg.reg32 = value;
+        break;
+    case CHANNEL_TRIG_REG_OFFSET:
+        TRACE_WRITE(s->iomem.addr, offset, s->channel_trig_reg.reg32, value);
+        s->channel_trig_reg.reg32 = value;
+        break;
+    case CHANNEL_EN_REG_OFFSET:
+        TRACE_WRITE(s->iomem.addr, offset, s->channel_en_reg.reg32, value);
+        s->channel_en_reg.reg32 = value;
+        break;
+    case CHANNEL_CSR_OFFSET...CHANNEL_APB_SEQ_OFFSET * MAX_CHANNELS:
+        int channel_idx = (offset - CHANNEL_CSR_OFFSET) / TEGRA_APB_DMA_CH_SIZE;
+        int reg = (offset - CHANNEL_CSR_OFFSET) % TEGRA_APB_DMA_CH_SIZE;
+        tegra_apb_dma_channel *channel = &s->channels[channel_idx];
+
+        switch (reg) {
+        case CHANNEL_CSR_OFFSET:
+            TRACE_WRITE(s->iomem.addr, offset, channel->channel_csr.reg32, value);
+            channel->channel_csr.reg32 = value;
+
+            if (channel->channel_csr.enb) {
+                // TODO
+                printf("UNIMPLEMENTED: DMA channel %d enabled\n", channel_idx);
+                channel->channel_csr.enb = 0;
+
+                if (channel->channel_csr.ie_eoc) {
+                    channel->channel_sta.ise_eoc = 1;
+                }
+            }
+            
+            tegra_apb_dma_update_irq(s);
+            break;
+        case CHANNEL_STA_OFFSET:
+            TRACE_WRITE(s->iomem.addr, offset, channel->channel_sta.reg32, value & CHANNEL_STA_WRMASK);
+            WR_MASKED(channel->channel_sta.reg32, value, CHANNEL_STA);
+            
+            if (channel->channel_sta.ise_eoc) {
+                channel->channel_sta.ise_eoc = 0;
+                tegra_apb_dma_update_irq(s);
+            }
+            break;
+        case CHANNEL_DMA_BYTE_STA_OFFSET:
+            TRACE_WRITE(s->iomem.addr, offset, channel->channel_dma_byte_sta.reg32, value);
+            channel->channel_dma_byte_sta.reg32 = value;
+            break;
+        case CHANNEL_AHB_PTR_OFFSET:
+            TRACE_WRITE(s->iomem.addr, offset, channel->channel_ahb_ptr.reg32, value);
+            channel->channel_ahb_ptr.reg32 = value;
+            break;
+        case CHANNEL_AHB_SEQ_OFFSET:
+            TRACE_WRITE(s->iomem.addr, offset, channel->channel_ahb_seq.reg32, value);
+            channel->channel_ahb_seq.reg32 = value;
+            break;
+        case CHANNEL_APB_PTR_OFFSET:
+            TRACE_WRITE(s->iomem.addr, offset, channel->channel_apb_ptr.reg32, value);
+            channel->channel_apb_ptr.reg32 = value;
+            break;
+        case CHANNEL_APB_SEQ_OFFSET:
+            TRACE_WRITE(s->iomem.addr, offset, channel->channel_apb_seq.reg32, value);
+            channel->channel_apb_seq.reg32 = value;
+            break;
+        default:
+            break;
+        }
         break;
     default:
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
@@ -1023,102 +346,19 @@ static void tegra_apb_dma_priv_reset(DeviceState *dev)
     s->irq_mask_set.reg32 = IRQ_MASK_SET_RESET;
     s->irq_mask_clr.reg32 = IRQ_MASK_CLR_RESET;
     s->trig_reg.reg32 = TRIG_REG_RESET;
-    s->channel_0_csr.reg32 = CHANNEL_0_CSR_RESET;
-    s->channel_0_sta.reg32 = CHANNEL_0_STA_RESET;
-    s->channel_0_ahb_ptr.reg32 = CHANNEL_0_AHB_PTR_RESET;
-    s->channel_0_ahb_seq.reg32 = CHANNEL_0_AHB_SEQ_RESET;
-    s->channel_0_apb_ptr.reg32 = CHANNEL_0_APB_PTR_RESET;
-    s->channel_0_apb_seq.reg32 = CHANNEL_0_APB_SEQ_RESET;
-    s->channel_1_csr.reg32 = CHANNEL_1_CSR_RESET;
-    s->channel_1_sta.reg32 = CHANNEL_1_STA_RESET;
-    s->channel_1_ahb_ptr.reg32 = CHANNEL_1_AHB_PTR_RESET;
-    s->channel_1_ahb_seq.reg32 = CHANNEL_1_AHB_SEQ_RESET;
-    s->channel_1_apb_ptr.reg32 = CHANNEL_1_APB_PTR_RESET;
-    s->channel_1_apb_seq.reg32 = CHANNEL_1_APB_SEQ_RESET;
-    s->channel_2_csr.reg32 = CHANNEL_2_CSR_RESET;
-    s->channel_2_sta.reg32 = CHANNEL_2_STA_RESET;
-    s->channel_2_ahb_ptr.reg32 = CHANNEL_2_AHB_PTR_RESET;
-    s->channel_2_ahb_seq.reg32 = CHANNEL_2_AHB_SEQ_RESET;
-    s->channel_2_apb_ptr.reg32 = CHANNEL_2_APB_PTR_RESET;
-    s->channel_2_apb_seq.reg32 = CHANNEL_2_APB_SEQ_RESET;
-    s->channel_3_csr.reg32 = CHANNEL_3_CSR_RESET;
-    s->channel_3_sta.reg32 = CHANNEL_3_STA_RESET;
-    s->channel_3_ahb_ptr.reg32 = CHANNEL_3_AHB_PTR_RESET;
-    s->channel_3_ahb_seq.reg32 = CHANNEL_3_AHB_SEQ_RESET;
-    s->channel_3_apb_ptr.reg32 = CHANNEL_3_APB_PTR_RESET;
-    s->channel_3_apb_seq.reg32 = CHANNEL_3_APB_SEQ_RESET;
-    s->channel_4_csr.reg32 = CHANNEL_4_CSR_RESET;
-    s->channel_4_sta.reg32 = CHANNEL_4_STA_RESET;
-    s->channel_4_ahb_ptr.reg32 = CHANNEL_4_AHB_PTR_RESET;
-    s->channel_4_ahb_seq.reg32 = CHANNEL_4_AHB_SEQ_RESET;
-    s->channel_4_apb_ptr.reg32 = CHANNEL_4_APB_PTR_RESET;
-    s->channel_4_apb_seq.reg32 = CHANNEL_4_APB_SEQ_RESET;
-    s->channel_5_csr.reg32 = CHANNEL_5_CSR_RESET;
-    s->channel_5_sta.reg32 = CHANNEL_5_STA_RESET;
-    s->channel_5_ahb_ptr.reg32 = CHANNEL_5_AHB_PTR_RESET;
-    s->channel_5_ahb_seq.reg32 = CHANNEL_5_AHB_SEQ_RESET;
-    s->channel_5_apb_ptr.reg32 = CHANNEL_5_APB_PTR_RESET;
-    s->channel_5_apb_seq.reg32 = CHANNEL_5_APB_SEQ_RESET;
-    s->channel_6_csr.reg32 = CHANNEL_6_CSR_RESET;
-    s->channel_6_sta.reg32 = CHANNEL_6_STA_RESET;
-    s->channel_6_ahb_ptr.reg32 = CHANNEL_6_AHB_PTR_RESET;
-    s->channel_6_ahb_seq.reg32 = CHANNEL_6_AHB_SEQ_RESET;
-    s->channel_6_apb_ptr.reg32 = CHANNEL_6_APB_PTR_RESET;
-    s->channel_6_apb_seq.reg32 = CHANNEL_6_APB_SEQ_RESET;
-    s->channel_7_csr.reg32 = CHANNEL_7_CSR_RESET;
-    s->channel_7_sta.reg32 = CHANNEL_7_STA_RESET;
-    s->channel_7_ahb_ptr.reg32 = CHANNEL_7_AHB_PTR_RESET;
-    s->channel_7_ahb_seq.reg32 = CHANNEL_7_AHB_SEQ_RESET;
-    s->channel_7_apb_ptr.reg32 = CHANNEL_7_APB_PTR_RESET;
-    s->channel_7_apb_seq.reg32 = CHANNEL_7_APB_SEQ_RESET;
-    s->channel_8_csr.reg32 = CHANNEL_8_CSR_RESET;
-    s->channel_8_sta.reg32 = CHANNEL_8_STA_RESET;
-    s->channel_8_ahb_ptr.reg32 = CHANNEL_8_AHB_PTR_RESET;
-    s->channel_8_ahb_seq.reg32 = CHANNEL_8_AHB_SEQ_RESET;
-    s->channel_8_apb_ptr.reg32 = CHANNEL_8_APB_PTR_RESET;
-    s->channel_8_apb_seq.reg32 = CHANNEL_8_APB_SEQ_RESET;
-    s->channel_9_csr.reg32 = CHANNEL_9_CSR_RESET;
-    s->channel_9_sta.reg32 = CHANNEL_9_STA_RESET;
-    s->channel_9_ahb_ptr.reg32 = CHANNEL_9_AHB_PTR_RESET;
-    s->channel_9_ahb_seq.reg32 = CHANNEL_9_AHB_SEQ_RESET;
-    s->channel_9_apb_ptr.reg32 = CHANNEL_9_APB_PTR_RESET;
-    s->channel_9_apb_seq.reg32 = CHANNEL_9_APB_SEQ_RESET;
-    s->channel_10_csr.reg32 = CHANNEL_10_CSR_RESET;
-    s->channel_10_sta.reg32 = CHANNEL_10_STA_RESET;
-    s->channel_10_ahb_ptr.reg32 = CHANNEL_10_AHB_PTR_RESET;
-    s->channel_10_ahb_seq.reg32 = CHANNEL_10_AHB_SEQ_RESET;
-    s->channel_10_apb_ptr.reg32 = CHANNEL_10_APB_PTR_RESET;
-    s->channel_10_apb_seq.reg32 = CHANNEL_10_APB_SEQ_RESET;
-    s->channel_11_csr.reg32 = CHANNEL_11_CSR_RESET;
-    s->channel_11_sta.reg32 = CHANNEL_11_STA_RESET;
-    s->channel_11_ahb_ptr.reg32 = CHANNEL_11_AHB_PTR_RESET;
-    s->channel_11_ahb_seq.reg32 = CHANNEL_11_AHB_SEQ_RESET;
-    s->channel_11_apb_ptr.reg32 = CHANNEL_11_APB_PTR_RESET;
-    s->channel_11_apb_seq.reg32 = CHANNEL_11_APB_SEQ_RESET;
-    s->channel_12_csr.reg32 = CHANNEL_12_CSR_RESET;
-    s->channel_12_sta.reg32 = CHANNEL_12_STA_RESET;
-    s->channel_12_ahb_ptr.reg32 = CHANNEL_12_AHB_PTR_RESET;
-    s->channel_12_ahb_seq.reg32 = CHANNEL_12_AHB_SEQ_RESET;
-    s->channel_12_apb_ptr.reg32 = CHANNEL_12_APB_PTR_RESET;
-    s->channel_12_apb_seq.reg32 = CHANNEL_12_APB_SEQ_RESET;
-    s->channel_13_csr.reg32 = CHANNEL_13_CSR_RESET;
-    s->channel_13_sta.reg32 = CHANNEL_13_STA_RESET;
-    s->channel_13_ahb_ptr.reg32 = CHANNEL_13_AHB_PTR_RESET;
-    s->channel_13_ahb_seq.reg32 = CHANNEL_13_AHB_SEQ_RESET;
-    s->channel_13_apb_ptr.reg32 = CHANNEL_13_APB_PTR_RESET;
-    s->channel_13_apb_seq.reg32 = CHANNEL_13_APB_SEQ_RESET;
-    s->channel_14_csr.reg32 = CHANNEL_14_CSR_RESET;
-    s->channel_14_sta.reg32 = CHANNEL_14_STA_RESET;
-    s->channel_14_ahb_ptr.reg32 = CHANNEL_14_AHB_PTR_RESET;
-    s->channel_14_ahb_seq.reg32 = CHANNEL_14_AHB_SEQ_RESET;
-    s->channel_14_apb_ptr.reg32 = CHANNEL_14_APB_PTR_RESET;
-    s->channel_14_apb_seq.reg32 = CHANNEL_14_APB_SEQ_RESET;
-    s->channel_15_csr.reg32 = CHANNEL_15_CSR_RESET;
-    s->channel_15_sta.reg32 = CHANNEL_15_STA_RESET;
-    s->channel_15_ahb_ptr.reg32 = CHANNEL_15_AHB_PTR_RESET;
-    s->channel_15_ahb_seq.reg32 = CHANNEL_15_AHB_SEQ_RESET;
-    s->channel_15_apb_ptr.reg32 = CHANNEL_15_APB_PTR_RESET;
-    s->channel_15_apb_seq.reg32 = CHANNEL_15_APB_SEQ_RESET;
+    s->channel_trig_reg.reg32 = CHANNEL_TRIG_REG_RESET;
+    s->dma_status.reg32 = DMA_STATUS_RESET;
+    s->channel_en_reg.reg32 = CHANNEL_EN_REG_RESET;
+
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        s->channels[i].channel_csr.reg32 = CHANNEL_CSR_RESET;
+        s->channels[i].channel_sta.reg32 = CHANNEL_STA_RESET;
+        s->channels[i].channel_dma_byte_sta.reg32 = CHANNEL_DMA_BYTE_STA_RESET;
+        s->channels[i].channel_ahb_ptr.reg32 = CHANNEL_AHB_PTR_RESET;
+        s->channels[i].channel_ahb_seq.reg32 = CHANNEL_AHB_SEQ_RESET;
+        s->channels[i].channel_apb_ptr.reg32 = CHANNEL_APB_PTR_RESET;
+        s->channels[i].channel_apb_seq.reg32 = CHANNEL_APB_SEQ_RESET;
+    }
 }
 
 static const MemoryRegionOps tegra_apb_dma_mem_ops = {
@@ -1132,8 +372,16 @@ static void tegra_apb_dma_priv_realize(DeviceState *dev, Error **errp)
     tegra_apb_dma *s = TEGRA_APB_DMA(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_apb_dma_mem_ops, s,
-                          "tegra.apb_dma", 0x1200);
+                          "tegra.apb_dma", TEGRA_APB_DMA_SIZE + TEGRA_APB_DMA_CH_SIZE * MAX_CHANNELS);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
+
+    for (int i = 0; i < ARRAY_SIZE(s->irqs); i++) {
+        sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irqs[i]);
+    }
+
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->channels[i].irq);
+    }
 }
 
 static void tegra_apb_dma_class_init(ObjectClass *klass, void *data)

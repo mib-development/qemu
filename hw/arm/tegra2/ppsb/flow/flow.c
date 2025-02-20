@@ -74,6 +74,7 @@ typedef struct tegra_flow_state {
     DEFINE_REG32(halt_events)[TEGRA2_NCPUS];
     DEFINE_REG32(csr)[TEGRA2_NCPUS];
     DEFINE_REG32(xrq_events);
+    DEFINE_REG32(cluster_control);
     uint8_t cop_stalled;
 } tegra_flow;
 
@@ -88,6 +89,7 @@ static const VMStateDescription vmstate_tegra_flow = {
         VMSTATE_ARRAY(csr, tegra_flow, TEGRA2_NCPUS, 0,
                       vmstate_info_uint32, csr_t),
         VMSTATE_UINT32(xrq_events.reg32, tegra_flow),
+        VMSTATE_UINT32(cluster_control.reg32, tegra_flow),
         VMSTATE_UINT8(cop_stalled, tegra_flow),
         VMSTATE_END_OF_LIST()
     }
@@ -137,16 +139,18 @@ static int tegra_flow_arm_event(tegra_flow *s, int cpu_id, int wait)
     }
 
     if (s->halt_events[cpu_id].irq_0) {
-        int sibling = tegra_sibling_cpu(cpu_id);
-
-        if (tegra_flow_have_pending_irq(cpu_id)) {
-            goto fired;
+        int have_pending_irq = tegra_flow_have_pending_irq(cpu_id);
+        
+        if (cpu_id != TEGRA2_COP) {
+            for (int i = 0; !have_pending_irq && i < TEGRA2_A9_NCORES; i++) {
+                if (i != cpu_id && tegra_flow_have_pending_irq(i)) {
+                    have_pending_irq = 1;
+                }
+            }
         }
 
-        if (sibling != cpu_id) {
-            if (tegra_flow_have_pending_irq(sibling)) {
-                goto fired;
-            }
+        if (have_pending_irq) {
+            goto fired;
         }
 
         unimplemented = 0;
@@ -223,10 +227,10 @@ static void tegra_flow_gen_interrupt(tegra_flow *s, int cpu_id)
 //     s->halt_events[cpu_id].mode &= ~INTERRUPT;
 
     /* ??? TODO: Check if IRQ is deprecated on Tegra2.  */
-    if (cpu_id == TEGRA2_COP) {
-        TRACE_IRQ_RAISE(s->iomem.addr, s->irq_cop_event);
-    } else {
+    if (cpu_id != TEGRA2_COP) {
         TRACE_IRQ_RAISE(s->iomem.addr, s->irq_cpu_event);
+    } else {
+        TRACE_IRQ_RAISE(s->iomem.addr, s->irq_cop_event);
     }
 }
 
@@ -311,6 +315,9 @@ static uint64_t tegra_flow_priv_read(void *opaque, hwaddr offset,
     case XRQ_EVENTS_OFFSET:
         ret = s->xrq_events.reg32;
         break;
+    case CLUSTER_CONTROL_OFFSET:
+        ret = s->cluster_control.reg32;
+        break;
     default:
         break;
     }
@@ -386,9 +393,15 @@ event:
 
     if (!(s->halt_events[cpu_id].mode & WAIT_IRQ)) {
         if (tegra_cpu_is_powergated(cpu_id)) {
-            cpu_id = tegra_sibling_cpu(cpu_id);
-
-            g_assert(s->halt_events[cpu_id].mode & STOP);
+            if (cpu_id == TEGRA2_COP) {
+                g_assert(s->halt_events[cpu_id].mode & STOP);
+            } else {
+                for (int i = 0; i < TEGRA2_A9_NCORES; i++) {
+                    if (cpu_id != i) {
+                        g_assert(s->halt_events[i].mode & STOP);
+                    }
+                }
+            }
         } else {
             return;
         }
@@ -436,9 +449,9 @@ static void tegra_flow_timer_event(void *opaque)
 
     s->halt_events[cpu_id].zero = MAX(0, s->halt_events[cpu_id].zero - 1);
 
-    TPRINT("tegra_flow: event on cpu %d zero=%u event_flag=%d mode=%s\n",
-           cpu_id, s->halt_events[cpu_id].zero, s->csr[cpu_id].event_flag,
-           tegra_flow_mode_name(s->halt_events[cpu_id].mode));
+    // TPRINT("tegra_flow: event on cpu %d zero=%u event_flag=%d mode=%s\n",
+    //        cpu_id, s->halt_events[cpu_id].zero, s->csr[cpu_id].event_flag,
+    //        tegra_flow_mode_name(s->halt_events[cpu_id].mode));
 
     if (s->halt_events[cpu_id].zero) {
         return;
@@ -466,6 +479,14 @@ static int tegra_flow_powergate(tegra_flow *s, int cpu_id, int is_sibling)
         wfe_bitmap &= s->csr[cpu_id].wait_wfe_bitmap;
 
         if (s->csr[cpu_id].wait_wfe_bitmap != wfe_bitmap) {
+//             tegra_cpu_halt(cpu_id);
+            return 0;
+        }
+    } else if (s->csr[cpu_id].wait_wfi_bitmap) {
+        uint32_t wfi_bitmap = tegra_get_wfi_bitmap();
+        wfi_bitmap &= s->csr[cpu_id].wait_wfi_bitmap;
+
+        if (s->csr[cpu_id].wait_wfi_bitmap != wfi_bitmap) {
 //             tegra_cpu_halt(cpu_id);
             return 0;
         }
@@ -503,13 +524,17 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
 
     if (in_wfe) {
         CPUState *cs = CPU(qemu_get_cpu(cpu_id));
-        int sibling = tegra_sibling_cpu(cpu_id);
 
         qemu_mutex_lock_iothread();
 
-        if (tegra_flow_powergate(s, cpu_id, 0) ||
-            tegra_flow_powergate(s, sibling, 1))
-        {
+        int powergated = tegra_flow_powergate(s, cpu_id, 0);
+        for (int i = 0 ; !powergated && i < TEGRA2_A9_NCORES; i++) {
+            if (tegra_flow_powergate(s, i, 1)) {
+                powergated = 1;
+            }
+        }
+
+        if (powergated) {
             qemu_mutex_unlock_iothread();
             cpu_loop_exit(cs);
         }
@@ -559,7 +584,7 @@ void tegra_flow_wfe_handle(int cpu_id)
 {
     tegra_flow *s = tegra_flow_dev;
 
-    tegra_flow_update_mode(s, cpu_id, 1);
+    tegra_flow_update_mode(s, cpu_id, 1); // TODO
 }
 
 static void tegra_flow_event_write(tegra_flow *s, hwaddr offset,
@@ -598,7 +623,14 @@ static void tegra_flow_csr_write(tegra_flow *s, hwaddr offset,
         case TEGRA2_A9_CORE1:
         case TEGRA2_A9_CORE2:
         case TEGRA2_A9_CORE3:
-            if (s->csr[ tegra_sibling_cpu(cpu_id) ].intr_flag) {
+            int flag = 0;
+            for (int i = 0; i < TEGRA2_A9_NCORES; i++) {
+                if (s->csr[i].intr_flag){
+                    flag = 1;
+                    break;
+                }
+            }
+            if (flag) {
                 break;
             }
             TRACE_IRQ_LOWER(s->iomem.addr, s->irq_cpu_event);
@@ -656,6 +688,11 @@ static void tegra_flow_priv_write(void *opaque, hwaddr offset,
         s->xrq_events.reg32 = value;
         break;
 
+    case CLUSTER_CONTROL_OFFSET:
+        TRACE_WRITE(s->iomem.addr, offset, s->cluster_control.reg32, value);
+        s->cluster_control.reg32 = value;
+        break;
+
     default:
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
         break;
@@ -679,6 +716,8 @@ static void tegra_flow_priv_reset(DeviceState *dev)
     s->csr[TEGRA2_COP].reg32 = COP_CSR_RESET;
 
     s->xrq_events.reg32 = XRQ_EVENTS_RESET;
+    s->cluster_control.reg32 = CLUSTER_CONTROL_RESET;
+
     s->cop_stalled = 0;
 }
 
@@ -707,7 +746,7 @@ static void tegra_flow_priv_realize(DeviceState *dev, Error **errp)
         arg->cpu_id = i;
 
         s->ptimer[i] = ptimer_init(tegra_flow_timer_event, arg,
-                                   PTIMER_POLICY_DEFAULT);
+                                   PTIMER_POLICY_CONTINUOUS_TRIGGER);
         ptimer_transaction_begin(s->ptimer[i]);
         ptimer_set_freq(s->ptimer[i], 1000000);
         ptimer_transaction_commit(s->ptimer[i]);

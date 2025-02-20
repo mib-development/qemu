@@ -100,6 +100,8 @@ static uint64_t tegra_evp_priv_read(void *opaque, hwaddr offset,
 out:
     TRACE_READ(s->iomem.addr, offset, ret);
 
+    printf("tegra_evp_priv_read: offset=0x%lx, ret=0x%lx\n", offset, ret);
+
     return ret;
 }
 
@@ -107,6 +109,8 @@ static void tegra_evp_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
     tegra_evp *s = opaque;
+
+    printf("tegra_evp_priv_write: offset=0x%lx, value=0x%lx\n", offset, value);
 
     switch (offset) {
     case EVP_CPU_RESET_VECTOR_OFFSET ... EVP_COP_PRI_FIQ_VEC_2_OFFSET:
@@ -184,6 +188,15 @@ static void tegra_cpu_do_interrupt(ARMCPU *cpu, void *opaque)
     uint32_t irq_vector_addr;
     CPUState *cs = opaque;
 
+    printf("tegra_cpu_do_interrupt: exception_index=%d\n", cs->exception_index);
+    // dump all regs
+    printf("tegra_evp_priv_write: pc=0x%08X sp=0x%08X\n", env->regs[15], env->regs[13]);
+    printf("tegra_evp_priv_write: r0=0x%08X r1=0x%08X r2=0x%08X r3=0x%08X\n", env->regs[0], env->regs[1], env->regs[2], env->regs[3]);
+    printf("tegra_evp_priv_write: r4=0x%08X r5=0x%08X r6=0x%08X r7=0x%08X\n", env->regs[4], env->regs[5], env->regs[6], env->regs[7]);
+    printf("tegra_evp_priv_write: r8=0x%08X r9=0x%08X r10=0x%08X r11=0x%08X\n", env->regs[8], env->regs[9], env->regs[10], env->regs[11]);
+    printf("tegra_evp_priv_write: r12=0x%08X\n", env->regs[12]);
+    printf("tegra_evp_priv_write: cpu_index=%d\n", cs->cpu_index);
+
     switch (cs->exception_index) {
     case EXCP_UDEF:
         irq_vector_addr = s->evp_regs[1][1];
@@ -221,10 +234,6 @@ static void tegra_cpu_do_interrupt(ARMCPU *cpu, void *opaque)
     /* ARM7TDMI switches to arm mode.  */
     env->thumb = 0;
 }
-
-#ifndef CONFIG_TCG
-#error "TCG must be enabled"
-#endif
 
 static void tegra_evp_priv_realize(DeviceState *dev, Error **errp)
 {

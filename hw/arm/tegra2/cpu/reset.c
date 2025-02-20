@@ -32,9 +32,6 @@
 
 #include "tegra_cpu_priv.h"
 
-#undef TPRINT
-#define TPRINT(...) {}
-
 static int tegra_A9_powergated;
 static int tegra_AVP_powergated;
 
@@ -134,7 +131,7 @@ void tegra_cpu_reset_deassert(int cpu_id, int flow)
     if (tcpu_in_reset[cpu_id]) {
         tcpu_in_reset[cpu_id] = 0;
 
-        arm_set_cpu_on(cpu_id, 0xf0010000, 0, 1, 0);
+        arm_set_cpu_on(cpu_id, 0xfff00000, 0, 1, 0);
 
         /* Force poweroff work queuing.  */
         cpu->power_state = PSCI_ON;

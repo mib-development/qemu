@@ -47,7 +47,7 @@ static void tegra_irq_dispatcher_set_irq_dev(void *opaque, int irq, int level)
     A9MPPrivState *a9mpcore = A9MPCORE_PRIV(tegra_a9mpcore_dev);
     tegra_ictlr *ictlr = TEGRA_ICTLR(tegra_ictlr_dev);
 
-//     TPRINT("%s irq=%d lvl=%d\n", __func__, irq, level);
+    TPRINT("%s irq=%d lvl=%d\n", __func__, irq, level);
 
     qemu_set_irq(qdev_get_gpio_in(DEVICE(&a9mpcore->gic), irq), level);
     qemu_set_irq(qdev_get_gpio_in(DEVICE(ictlr), irq), level);
@@ -65,7 +65,7 @@ static void tegra_irq_dispatcher_set_irq_gic(void *opaque, int irq, int level)
         level |= s->cpu_irq_lic_lvl;
     }
 
-//     TPRINT("%s cpu=%d irq=%d lvl=%d\n", __func__, cpu_id, irq, level);
+    TPRINT("%s cpu=%d irq=%d lvl=%d\n", __func__, cpu_id, irq, level);
 
     qemu_set_irq(s->cpu_irqs[cpu_id][ARM_CPU_IRQ], level);
 
@@ -98,8 +98,8 @@ static void tegra_irq_dispatcher_set_cop_irq_lic(void *opaque, int irq, int leve
     tegra_irq_dispatcher *s = TEGRA_IRQ_DISPATCHER(opaque);
     int irq_type = irq & 1;
 
-//     TPRINT("%s irq=%d type=%s lvl=%d\n",
-//            __func__, irq, irq_type ? "FIQ":"IRQ", level);
+    TPRINT("%s irq=%d type=%s lvl=%d\n",
+           __func__, irq, irq_type ? "FIQ":"IRQ", level);
 
     qemu_set_irq(s->cop_irqs[irq_type], level);
 

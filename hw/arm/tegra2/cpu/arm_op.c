@@ -30,6 +30,7 @@
 #include "tegra_trace.h"
 
 #define HALT_WFE    0xff
+#define HALT_WFI    0xfe
 
 static int tegra_cpus[TEGRA2_NCPUS];
 
@@ -47,26 +48,6 @@ static int is_tegra_cpu(int cpu_id)
     return tegra_cpus[cpu_id];
 }
 
-int __attribute__((const)) tegra_sibling_cpu(int cpu_id)
-{
-    switch (cpu_id) {
-    case TEGRA2_A9_CORE0:
-        return TEGRA2_A9_CORE1;
-        break;
-    case TEGRA2_A9_CORE1:
-        return TEGRA2_A9_CORE2;
-        break;
-    case TEGRA2_A9_CORE2:
-        return TEGRA2_A9_CORE3;
-        break;
-    case TEGRA2_A9_CORE3:
-        return TEGRA2_A9_CORE0;
-        break;
-    }
-
-    return cpu_id;
-}
-
 uint32_t tegra_get_wfe_bitmap(void)
 {
     uint32_t wfe_bitmap = 0;
@@ -78,6 +59,19 @@ uint32_t tegra_get_wfe_bitmap(void)
     }
 
     return wfe_bitmap;
+}
+
+uint32_t tegra_get_wfi_bitmap(void)
+{
+    uint32_t wfi_bitmap = 0;
+    int i;
+
+    for (i = 0; i < TEGRA2_A9_NCORES; i++) {
+        CPUState *cs = CPU(qemu_get_cpu(i));
+        wfi_bitmap |= (cs->halted == HALT_WFI) << i;
+    }
+
+    return wfi_bitmap;
 }
 
 void HELPER(wfe)(CPUARMState *env)

@@ -2,6 +2,7 @@
  * ARM NVIDIA Tegra2 emulation.
  *
  * Copyright (c) 2014-2015 Dmitry Osipenko <digetx@gmail.com>
+ * Copyright (c) 2025 Iscle Gil <albertiscle9@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by the
@@ -35,16 +36,16 @@ static const VMStateDescription vmstate_tegra_ictlr = {
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
-        VMSTATE_UINT32_ARRAY(virq_cpu, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(virq_cop, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(vfiq_cpu, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(vfiq_cop, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(isr, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(fir, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(cpu_ier, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(cpu_iep_class, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(cop_ier, tegra_ictlr, 4),
-        VMSTATE_UINT32_ARRAY(cop_iep_class, tegra_ictlr, 4),
+        VMSTATE_UINT32_ARRAY(virq_cpu, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(virq_cop, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(vfiq_cpu, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(vfiq_cop, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(isr, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(fir, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(cpu_ier, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(cpu_iep_class, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(cop_ier, tegra_ictlr, MAX_BANKS),
+        VMSTATE_UINT32_ARRAY(cop_iep_class, tegra_ictlr, MAX_BANKS),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -53,7 +54,7 @@ static int tegra_ictlr_is_irq_pending(tegra_ictlr *s, uint32_t *reg, int fiq)
 {
     int i;
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < MAX_BANKS; i++) {
         if (reg[i]) {
 //             TPRINT("%s bank=%d %s reg=0x%08X\n",
 //                    __func__, i, fiq ? "FIQ" : "IRQ", reg[i]);
@@ -123,7 +124,7 @@ static void tegra_ictlr_update_irq(tegra_ictlr *s, uint32_t *virq, uint32_t *ier
     }
 
     /* TODO: Just track CPU IRQ status.  */
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < MAX_BANKS; i++) {
         new_irq_lvl = (i == bank) ? !!new_sts : !!virq[i];
 
         /* Any bank with VIRQ != 0 would interrupt CPU.  */
@@ -179,7 +180,7 @@ static uint64_t tegra_ictlr_read(void *opaque, hwaddr offset, unsigned size)
     int bank = (offset >> 8);
     uint64_t ret = 0;
 
-    if (bank >= 4)
+    if (bank >= MAX_BANKS)
         goto out;
 
     switch (offset & 0xff) {
@@ -218,7 +219,7 @@ static uint64_t tegra_ictlr_read(void *opaque, hwaddr offset, unsigned size)
     }
 
 out:
-    TRACE_READ(s->iomem.addr + bank * 0x100, offset, ret);
+    TRACE_READ(s->iomem.addr + bank * BANK_SIZE, offset, ret);
 
     return ret;
 }
@@ -229,54 +230,54 @@ static void tegra_ictlr_write(void *opaque, hwaddr offset,
     tegra_ictlr *s = opaque;
     int bank = (offset >> 8);
 
-    if (bank >= 4) {
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, 0, value);
+    if (bank >= MAX_BANKS) {
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, 0, value);
         return;
     }
 
     switch (offset & 0xff) {
     case ICTLR_FIR_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->fir[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->fir[bank], value);
         s->fir[bank] |= value;
         break;
 
     case ICTLR_FIR_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->fir[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->fir[bank], value);
         s->fir[bank] &= ~value;
         break;
 
     case ICTLR_CPU_IER_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->cpu_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cpu_ier[bank], value);
         s->cpu_ier[bank] |= value;
         break;
 
     case ICTLR_CPU_IER_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->cpu_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cpu_ier[bank], value);
         s->cpu_ier[bank] &= ~value;
         break;
 
     case ICTLR_CPU_IEP_CLASS_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->cpu_iep_class[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cpu_iep_class[bank], value);
         s->cpu_iep_class[bank] = value;
         break;
 
     case ICTLR_COP_IER_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->cop_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cop_ier[bank], value);
         s->cop_ier[bank] |= value;
         break;
 
     case ICTLR_COP_IER_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->cop_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cop_ier[bank], value);
         s->cop_ier[bank] &= ~value;
         break;
 
     case ICTLR_COP_IEP_CLASS_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, s->cop_iep_class[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cop_iep_class[bank], value);
         s->cop_iep_class[bank] = value;
         break;
 
     default:
-        TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, 0, value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, 0, value);
         return;
     }
 
@@ -325,7 +326,7 @@ static void tegra_ictlr_init(Object *obj)
                             TYPE_TEGRA_ARBGNT_ICTLR);
 
     memory_region_init_io(&s->iomem, obj, &tegra_ictlr_mem_ops, s,
-                          "tegra.ictlr", 0x400);
+                          "tegra.ictlr", BANK_SIZE * MAX_BANKS);
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->iomem);
 
     tegra_arb_gnt_ictlr_dev = &s->arb_gnt_ictlr;

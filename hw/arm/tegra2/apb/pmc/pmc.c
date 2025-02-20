@@ -499,6 +499,8 @@ static uint64_t tegra_pmc_priv_read(void *opaque, hwaddr offset,
 
     TRACE_READ(s->iomem.addr, offset, ret);
 
+    printf("tegra_pmc_priv_read: offset=0x%lx, ret=0x%lx\n", offset, ret);
+
     return ret;
 }
 
@@ -506,6 +508,8 @@ static void tegra_pmc_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
     tegra_pmc *s = opaque;
+
+    printf("tegra_pmc_priv_write: offset=0x%lx, value=0x%lx\n", offset, value);
 
     switch (offset) {
     case CNTRL_OFFSET:

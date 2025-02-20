@@ -26,6 +26,7 @@
 #include "exec/address-spaces.h"
 #include "hw/boards.h"
 #include "hw/sysbus.h"
+#include "hw/misc/unimp.h"
 #include "hw/arm/boot.h"
 #include "hw/loader.h"
 #include "hw/char/serial.h"
@@ -50,6 +51,7 @@
 
 #define BOOTLOADER_BASE 0x84008000
 #define BOOTROM_BASE    0xFFF00000
+#define BOOTROM_SIZE    0xBfff
 // #define BOOTMON_BASE    0xF0010000
 
 #define RW  0
@@ -244,28 +246,28 @@ static void tegra2_init(MachineState *machine)
     memory_region_add_and_init_ram(sysmem, "tegra.dram",
                                    TEGRA_DRAM_BASE, machine->ram_size, RW);
 
-    memory_region_add_and_init_ram(sysmem, "tegra.hi-vec",
-                                   0xffff0000, SZ_64K, RW);
+    // memory_region_add_and_init_ram(sysmem, "tegra.hi-vec",
+    //                                0xffff0000, SZ_64K, RW);
 
     // memory_region_add_and_init_ram(sysmem, "tegra.bootmon",
     //                                BOOTMON_BASE, TARGET_PAGE_SIZE, RO);
 
     /* Internal static RAM */
-    memory_region_add_and_init_ram(sysmem, "tegra.iram",
-                                   TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE, RW);
+    // memory_region_add_and_init_ram(sysmem, "tegra.iram",
+    //                                TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE, RW);
 
     /* Map 0x400-0x40000 of IRAM to remote device.  */
-//     memory_region_add_and_init_ram(sysmem, "tegra.iram",
-//                                    TEGRA_IRAM_BASE, TEGRA_RESET_HANDLER_SIZE, RW);
-//     sysbus_create_simple("tegra.remote_iram",
-//                          TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE, NULL);
+    // memory_region_add_and_init_ram(sysmem, "tegra.iram",
+    //                                TEGRA_IRAM_BASE, TEGRA_RESET_HANDLER_SIZE, RW);
+    // sysbus_create_simple("tegra.remote_iram",
+    //                      TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE, NULL);
 
     memory_region_add_and_init_ram(sysmem, "tegra.irom",
-                                   BOOTROM_BASE, 0xC000, RO);
+                                   BOOTROM_BASE, BOOTROM_SIZE, RO);
 
-    /* Secure boot stub */
-    memory_region_add_and_init_ram(sysmem, "tegra.secure_boot",
-                                   TEGRA_SB_BASE, TEGRA_SB_SIZE, RW);
+    // /* Secure boot stub */
+    // memory_region_add_and_init_ram(sysmem, "tegra.secure_boot",
+    //                                TEGRA_SB_BASE, TEGRA_SB_SIZE, RW);
 
     /* Create the actual CPUs */
     tegra2_create_cpus();
@@ -340,6 +342,12 @@ static void tegra2_init(MachineState *machine)
     /* APB DMA controller */
     tegra_apb_dma_dev = sysbus_create_simple("tegra.apb_dma",
                                              TEGRA_APB_DMA_BASE, NULL);
+    sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 0, DIRQ(INT_APB_DMA));
+    sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 1, DIRQ(INT_APB_DMA_COP));
+    for (int i = 0; i < 16; i++) {
+        sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 2 + i, DIRQ(INT_APB_DMA_CH0 + i));
+        // sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 2 + 16 + i, DIRQ(INT_APB_DMA_CH16 + i));
+    }
 
     /* APB bus controller */
     tegra_apb_misc_dev = sysbus_create_simple("tegra.apb_misc",
@@ -582,7 +590,7 @@ static void tegra2_init(MachineState *machine)
 
     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-IROM", sysmem,
                                 BOOTROM_BASE,
-                                BOOTROM_BASE, 0xC000);
+                                BOOTROM_BASE, BOOTROM_SIZE);
 
     // cop_memory_region_add_alias(cop_sysmem, "tegra.cop-bootmon", sysmem,
     //                             BOOTMON_BASE,
@@ -597,6 +605,8 @@ static void tegra2_init(MachineState *machine)
 //     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-remote_mem", sysmem,
 //                                 0x2F600000,
 //                                 0x2F600000, 0x10000000);
+
+    create_unimplemented_device("unimplemented-memory", 0x0, 0xFFFFFFFF);
 
     cs = qemu_get_cpu(TEGRA2_COP);
     cs->as = cop_as;

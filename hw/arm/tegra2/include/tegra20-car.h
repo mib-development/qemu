@@ -19,7 +19,7 @@
 #define TEGRA20_CLK_CPU 0
 /* 1 */
 /* 2 */
-#define TEGRA20_CLK_AC97 3
+/* 3 */
 #define TEGRA20_CLK_RTC 4
 #define TEGRA20_CLK_TIMER 5
 #define TEGRA20_CLK_UARTA 6
@@ -32,7 +32,7 @@
 #define TEGRA20_CLK_NDFLASH 13
 #define TEGRA20_CLK_SDMMC1 14
 #define TEGRA20_CLK_SDMMC4 15
-#define TEGRA20_CLK_TWC 16
+/* 16 */
 #define TEGRA20_CLK_PWM 17
 #define TEGRA20_CLK_I2S2 18
 #define TEGRA20_CLK_EPP 19
@@ -41,7 +41,7 @@
 #define TEGRA20_CLK_USBD 22
 #define TEGRA20_CLK_ISP 23
 #define TEGRA20_CLK_GR3D 24
-#define TEGRA20_CLK_IDE 25
+/* 25 */
 #define TEGRA20_CLK_DISP2 26
 #define TEGRA20_CLK_DISP1 27
 #define TEGRA20_CLK_HOST1X 28
@@ -60,9 +60,9 @@
 #define TEGRA20_CLK_KFUSE 40
 #define TEGRA20_CLK_SBC1 41
 #define TEGRA20_CLK_NOR 42
-#define TEGRA20_CLK_SPI 43
+/* 43 */
 #define TEGRA20_CLK_SBC2 44
-#define TEGRA20_CLK_XIO 45
+/* 45 */
 #define TEGRA20_CLK_SBC3 46
 #define TEGRA20_CLK_DVC 47
 #define TEGRA20_CLK_DSI 48
@@ -94,25 +94,25 @@
 #define TEGRA20_CLK_CSITE 73
 /* 74 */
 #define TEGRA20_CLK_AVPUCQ 75
-#define TEGRA20_CLK_LA 76
+/* 76 */
 /* 77 */
 /* 78 */
-/* 79 */
-/* 80 */
-/* 81 */
-/* 82 */
+#define TEGRA20_CLK_DTV 79
+#define TEGRA20_CLK_NAND_SPEED 80
+#define TEGRA20_CLK_I2C_SLOW 81
+#define TEGRA20_CLK_DSIB 82
 /* 83 */
 #define TEGRA20_CLK_IRAMA 84
 #define TEGRA20_CLK_IRAMB 85
 #define TEGRA20_CLK_IRAMC 86
 #define TEGRA20_CLK_IRAMD 87
 #define TEGRA20_CLK_CRAM2 88
-#define TEGRA20_CLK_AUDIO_2X 89 /* a/k/a audio_2x_sync_clk */
+/* 89 */
 #define TEGRA20_CLK_CLK_D 90
 /* 91 */
 #define TEGRA20_CLK_CSUS 92
-#define TEGRA20_CLK_CDEV2 93
-#define TEGRA20_CLK_CDEV1 94
+/* 93 */
+/* 94 */
 /* 95 */
 
 #define TEGRA20_CLK_UARTB 96

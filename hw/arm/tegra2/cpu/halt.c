@@ -29,9 +29,6 @@
 
 #include "tegra_cpu_priv.h"
 
-#undef TPRINT
-#define TPRINT(...) {}
-
 static int tcpu_halted[TEGRA2_NCPUS];
 
 void tegra_cpu_hlt_clr(void)
