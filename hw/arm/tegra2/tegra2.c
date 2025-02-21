@@ -174,7 +174,7 @@ static void tegra2_create_cpus(void)
     }
 
     /* AVP(COP) Audio Video Processor */
-    Object *cpuobj = object_new(ARM_CPU_TYPE_NAME("arm7tdmi"));
+    Object *cpuobj = object_new(ARM_CPU_TYPE_NAME("arm926")); // should be arm7tdmi
     object_property_set_bool(cpuobj, "start-powered-off", true, &error_abort);
     qdev_realize(DEVICE(cpuobj), NULL, &error_fatal);
 
@@ -392,7 +392,7 @@ static void tegra2_init(MachineState *machine)
         blk = di ? blk_by_legacy_dinfo(di) : NULL;
         carddev = qdev_new(TYPE_SD_CARD);
         qdev_prop_set_drive(carddev, "drive", blk);
-        qdev_prop_set_bit(carddev, "emmc", false);
+        // qdev_prop_set_bit(carddev, "emmc", false);
         qdev_realize_and_unref(carddev, qdev_get_child_bus(tegra_sdhci4_dev, "sd-bus"), &error_fatal);
 
 //         tegra_sdhci4_dev = sysbus_create_simple("tegra.sdhci",
