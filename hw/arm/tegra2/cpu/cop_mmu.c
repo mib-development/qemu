@@ -193,16 +193,17 @@ static void tegra_cop_mmu_priv_realize(DeviceState *dev, Error **errp)
                           "tegra.cop_mmu", SZ_64K);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
-    ARM_CPU(cs)->translate_addr = tegra_cop_mmu_translate;
+    // ISCLE: FIXME!
+    // ARM_CPU(cs)->translate_addr = tegra_cop_mmu_translate;
 }
 
 static void tegra_cop_mmu_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_cop_mmu_priv_reset);
     dc->realize = tegra_cop_mmu_priv_realize;
     dc->vmsd = &vmstate_tegra_cop_mmu;
-    dc->reset = tegra_cop_mmu_priv_reset;
 }
 
 static const TypeInfo tegra_cop_mmu_info = {

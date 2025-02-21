@@ -214,8 +214,8 @@ static void bse_remote_remote_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_vde_bse_priv_reset);
     dc->realize = tegra_vde_bse_priv_realize;
-    dc->reset = tegra_vde_bse_priv_reset;
 }
 
 static const TypeInfo bse_remote_info = {

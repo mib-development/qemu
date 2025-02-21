@@ -2920,12 +2920,6 @@ void qemu_init(int argc, char **argv)
             case QEMU_OPTION_dtb:
                 qdict_put_str(machine_opts_dict, "dtb", optarg);
                 break;
-            case QEMU_OPTION_bootloader:
-                qdict_put_str(machine_opts_dict, "bootloader", optarg);
-                break;
-            case QEMU_OPTION_iram:
-                qdict_put_str(machine_opts_dict, "iram", optarg);
-                break;
             case QEMU_OPTION_cdrom:
                 drive_add(IF_DEFAULT, 2, optarg, CDROM_OPTS);
                 break;

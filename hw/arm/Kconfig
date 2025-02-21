@@ -644,6 +644,8 @@ config ARMSSE
 
 config TEGRA2
     bool
+    default y
+    depends on TCG && ARM
     select I2C
     select SDHCI
     select SERIAL

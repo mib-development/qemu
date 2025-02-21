@@ -202,7 +202,7 @@ static void tegra_cpu_do_interrupt(ARMCPU *cpu, void *opaque)
         irq_vector_addr = s->evp_regs[1][1];
         break;
     case EXCP_SWI:
-        if (semihosting_enabled()) {
+        if (semihosting_enabled(false)) {
             if (env->regs[15] != 0x08 && env->regs[15] != 0xFFFF0008) {
                 return;
             }
@@ -256,9 +256,9 @@ static void tegra_evp_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_evp_priv_reset);
     dc->realize = tegra_evp_priv_realize;
     dc->vmsd = &vmstate_tegra_evp;
-    dc->reset = tegra_evp_priv_reset;
 }
 
 static const TypeInfo tegra_evp_info = {

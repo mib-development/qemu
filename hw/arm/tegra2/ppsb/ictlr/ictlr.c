@@ -342,9 +342,9 @@ static void tegra_ictlr_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_ictlr_reset);
     dc->vmsd = &vmstate_tegra_ictlr;
     dc->realize = tegra_ictlr_realize;
-    dc->reset = tegra_ictlr_reset;
 }
 
 static const TypeInfo tegra_ictlr_info = {

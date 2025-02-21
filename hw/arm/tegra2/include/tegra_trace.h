@@ -17,16 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/* WARNING: HACK */
-
 #include "hw/irq.h"
-struct IRQState {
-    Object parent_obj;
-
-    qemu_irq_handler handler;
-    void *opaque;
-    int n;
-};
 
 #ifdef TEGRA_TRACE
 
@@ -68,12 +59,12 @@ static inline uint32_t ttrw(int rw, int c, int r, int s)
 #define TRACE_CDMA_START(c)                 tegra_trace_cdma(0xA << 28, 0, c)
 #define TRACE_CDMA_STOP(c)                  tegra_trace_cdma(0xB << 28, 0, c)
 #else
-#define TRACE_READ_MEM(a, o, v, s)          printf("TRACE_READ_MEM: addr=0x%08X offset=0x%08X value=0x%08X size=%d\n", a, o, v, s)
-#define TRACE_WRITE_MEM(a, o, v, s)         printf("TRACE_WRITE_MEM: addr=0x%08X offset=0x%08X value=0x%08X size=%d\n", a, o, v, s)
-#define TRACE_READ(a, o, v)                 printf("TRACE_READ: addr=0x%08X offset=0x%08X value=0x%08X\n", a, o, v)
-#define TRACE_WRITE(a, o, v, n)             printf("TRACE_WRITE: addr=0x%08X offset=0x%08X value=0x%08X new_value=0x%08X\n", a, o, v, n)
-#define TRACE_READ_EXT(a, o, v, c, r)       printf("TRACE_READ_EXT: addr=0x%08X offset=0x%08X value=0x%08X clk_disabled=%d in_reset=%d\n", a, o, v, c, r)
-#define TRACE_WRITE_EXT(a, o, v, n, c, r)   printf("TRACE_WRITE_EXT: addr=0x%08X offset=0x%08X value=0x%08X new_value=0x%08X clk_disabled=%d in_reset=%d\n", a, o, v, n, c, r)
+#define TRACE_READ_MEM(a, o, v, s)          printf("TRACE_READ_MEM: addr=0x%08lX offset=0x%08lX value=0x%08lX size=%d\n", (long unsigned int ) a, (long unsigned int ) o, (long unsigned int ) v, s)
+#define TRACE_WRITE_MEM(a, o, v, s)         printf("TRACE_WRITE_MEM: addr=0x%08lX offset=0x%08lX value=0x%08lX size=%d\n", (long unsigned int ) a, (long unsigned int ) o, (long unsigned int ) v, s)
+#define TRACE_READ(a, o, v)                 printf("TRACE_READ: addr=0x%08lX offset=0x%08lX value=0x%08lX\n", (long unsigned int ) a, (long unsigned int ) o, (long unsigned int ) v)
+#define TRACE_WRITE(a, o, v, n)             printf("TRACE_WRITE: addr=0x%08lX offset=0x%08lX value=0x%08lX new_value=0x%08lX\n", (long unsigned int ) a, (long unsigned int ) o, (long unsigned int ) v, (long unsigned int ) n)
+#define TRACE_READ_EXT(a, o, v, c, r)       printf("TRACE_READ_EXT: addr=0x%08lX offset=0x%08lX value=0x%08lX clk_disabled=%d in_reset=%d\n", (long unsigned int ) a, (long unsigned int ) o, (long unsigned int ) v, c, r)
+#define TRACE_WRITE_EXT(a, o, v, n, c, r)   printf("TRACE_WRITE_EXT: addr=0x%08lX offset=0x%08lX value=0x%08lX new_value=0x%08lX clk_disabled=%d in_reset=%d\n", (long unsigned int ) a, (long unsigned int ) o, (long unsigned int ) v, n, c, r)
 #define TRACE_IRQ_RAISE(a, i)               do {(void)(a); qemu_irq_raise(i);} while (0)
 #define TRACE_IRQ_LOWER(a, i)               do {(void)(a); qemu_irq_lower(i);} while (0)
 #define TRACE_IRQ_SET(a, i, v)              do {(void)(a); qemu_set_irq(i,v);} while (0)

@@ -525,7 +525,7 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
     if (in_wfe) {
         CPUState *cs = CPU(qemu_get_cpu(cpu_id));
 
-        qemu_mutex_lock_iothread();
+        bql_lock();
 
         int powergated = tegra_flow_powergate(s, cpu_id, 0);
         for (int i = 0 ; !powergated && i < TEGRA2_A9_NCORES; i++) {
@@ -535,7 +535,7 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
         }
 
         if (powergated) {
-            qemu_mutex_unlock_iothread();
+            bql_unlock();
             cpu_loop_exit(cs);
         }
     }
@@ -576,7 +576,7 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
     }
 
     if (in_wfe) {
-        qemu_mutex_unlock_iothread();
+        bql_unlock();
     }
 }
 
@@ -757,9 +757,9 @@ static void tegra_flow_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_flow_priv_reset);
     dc->realize = tegra_flow_priv_realize;
     dc->vmsd = &vmstate_tegra_flow;
-    dc->reset = tegra_flow_priv_reset;
 }
 
 static const TypeInfo tegra_flow_info = {

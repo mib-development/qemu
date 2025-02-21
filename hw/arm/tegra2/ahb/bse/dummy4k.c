@@ -97,8 +97,8 @@ static void tegra_bse_dummy_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_bse_dummy_priv_reset);
     dc->realize = tegra_bse_dummy_priv_realize;
-    dc->reset = tegra_bse_dummy_priv_reset;
 }
 
 static const TypeInfo tegra_dummy_info = {

@@ -702,9 +702,9 @@ static void tegra_host1x_channel_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     device_class_set_props(dc, tegra_host1x_channel_properties);
+    device_class_set_legacy_reset(dc, tegra_host1x_channel_priv_reset);
     dc->vmsd = &vmstate_tegra_host1x_channel;
     dc->realize = tegra_host1x_channel_realize;
-    dc->reset = tegra_host1x_channel_priv_reset;
 }
 
 static const TypeInfo tegra_host1x_channel_info = {

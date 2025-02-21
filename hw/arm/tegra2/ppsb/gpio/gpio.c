@@ -276,9 +276,9 @@ static void tegra_gpio_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_gpio_priv_reset);
     dc->realize = tegra_gpio_priv_realize;
     dc->vmsd = &vmstate_tegra_gpio;
-    dc->reset = tegra_gpio_priv_reset;
 }
 
 static const TypeInfo tegra_gpio_info = {

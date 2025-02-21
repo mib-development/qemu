@@ -993,9 +993,9 @@ static void tegra_pmc_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_pmc_priv_reset);
     dc->realize = tegra_pmc_priv_realize;
     dc->vmsd = &vmstate_tegra_pmc;
-    dc->reset = tegra_pmc_priv_reset;
 }
 
 static const TypeInfo tegra_pmc_info = {

@@ -1367,9 +1367,9 @@ static void tegra_car_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_car_priv_reset);
     dc->realize = tegra_car_priv_realize;
     dc->vmsd = &vmstate_tegra_car;
-    dc->reset = tegra_car_priv_reset;
 }
 
 static const TypeInfo tegra_car_info = {

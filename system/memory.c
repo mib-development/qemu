@@ -35,8 +35,6 @@
 #include "migration/vmstate.h"
 #include "exec/address-spaces.h"
 
-#include "../hw/arm/tegra2/include/tegra_trace.h"
-
 //#define DEBUG_UNASSIGNED
 
 static unsigned memory_region_transaction_depth;
@@ -1346,7 +1344,6 @@ static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " HWADDR_FMT_plx "\n", addr);
 #endif
-    TRACE_READ(addr, 0, 0);
     return 0;
 }
 
@@ -1356,7 +1353,6 @@ static void unassigned_mem_write(void *opaque, hwaddr addr,
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem write " HWADDR_FMT_plx " = 0x%"PRIx64"\n", addr, val);
 #endif
-    TRACE_WRITE(addr, 0, val, 0);
 }
 
 static bool unassigned_mem_accepts(void *opaque, hwaddr addr,

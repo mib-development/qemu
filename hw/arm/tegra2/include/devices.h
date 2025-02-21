@@ -39,7 +39,7 @@ extern void * tegra_timer_us_dev;
 extern void * tegra_timer3_dev;
 extern void * tegra_timer4_dev;
 extern void * tegra_uarta_dev;
-extern void * tegra_uartd_dev;
+// extern void * tegra_uartd_dev;
 extern void * tegra_dc1_dev;
 extern void * tegra_ehci1_dev;
 extern void * tegra_ehci2_dev;

@@ -405,7 +405,6 @@ static const VMStateDescription tegra_i2c_vmstate = {
     .name = "tegra_i2c",
     .version_id = 1,
     .minimum_version_id = 1,
-    .minimum_version_id_old = 1,
     .fields = (VMStateField[]) {
         VMSTATE_BOOL(is_dvc, TegraI2CState),
         VMSTATE_UINT32_ARRAY(dvc_ctrl, TegraI2CState, 3),
@@ -441,7 +440,7 @@ static void tegra_i2c_class_init(ObjectClass *oc, void *data)
     DeviceClass *dc = DEVICE_CLASS(oc);
 
     device_class_set_props(dc, tegra_i2c_props);
-    dc->reset = tegra_i2c_reset;
+    device_class_set_legacy_reset(dc, tegra_i2c_reset);
     dc->vmsd = &tegra_i2c_vmstate;
 }
 

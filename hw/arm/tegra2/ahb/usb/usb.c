@@ -129,8 +129,8 @@ static void tegra_usb_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
     SysBusEHCIClass *sec = SYS_BUS_EHCI_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_usb_priv_reset);
     dc->vmsd = &vmstate_tegra_usb;
-    dc->reset = tegra_usb_priv_reset;
 
     sec->capsbase  = 0x100;
     sec->opregbase = 0x140;

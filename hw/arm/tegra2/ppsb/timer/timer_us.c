@@ -124,7 +124,7 @@ static void tegra_timer_us_priv_realize(DeviceState *dev, Error **errp)
                           "tegra.timer_us", TEGRA_TMRUS_SIZE);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
-    s->ptimer = ptimer_init(tegra_timer_us_tick, s, PTIMER_POLICY_DEFAULT);
+    s->ptimer = ptimer_init(tegra_timer_us_tick, s, PTIMER_POLICY_CONTINUOUS_TRIGGER);
     ptimer_transaction_begin(s->ptimer);
     ptimer_set_freq(s->ptimer, 1000000 * SCALE);
     ptimer_set_limit(s->ptimer, 0xffffffff, 1);
@@ -135,9 +135,9 @@ static void tegra_timer_us_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_timer_us_priv_reset);
     dc->realize = tegra_timer_us_priv_realize;
     dc->vmsd = &vmstate_tegra_timer_us;
-    dc->reset = tegra_timer_us_priv_reset;
 }
 
 static const TypeInfo tegra_timer_us_info = {

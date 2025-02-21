@@ -29,7 +29,7 @@
 #include "hw/misc/unimp.h"
 #include "hw/arm/boot.h"
 #include "hw/loader.h"
-#include "hw/char/serial.h"
+#include "hw/char/serial-mm.h"
 #include "hw/sd/sdhci.h"
 #include "hw/net/lan9118.h"
 #include "sysemu/reset.h"
@@ -187,8 +187,6 @@ static void tegra2_create_cpus(void)
 
 static void load_memory_images(MachineState *machine)
 {
-    const char *bootloader_path = machine->bootloader;
-    // const char *iram_path = machine->iram;
     int tmp;
 
     /* TODO: load bootloader from emmc */
@@ -197,7 +195,7 @@ static void load_memory_images(MachineState *machine)
     for (tmp = 0; tmp < ARRAY_SIZE(tegra_bootrom); tmp++)
         tegra_bootrom[tmp] = tswap32(tegra_bootrom[tmp]);
 
-    bootloader_path = "/home/iscle/Documents/mib/bootloader_0.bin";
+    const char *bootloader_path = "/home/iscle/Documents/mib/bootloader_0.bin";
     if (bootloader_path != NULL) {
         /* Load bootloader */
         assert(load_image_targphys(bootloader_path, BOOTLOADER_BASE,
@@ -344,7 +342,7 @@ static void tegra2_init(MachineState *machine)
                                              TEGRA_APB_DMA_BASE, NULL);
     sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 0, DIRQ(INT_APB_DMA));
     sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 1, DIRQ(INT_APB_DMA_COP));
-    for (int i = 0; i < 16; i++) {
+    for (i = 0; i < 16; i++) {
         sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 2 + i, DIRQ(INT_APB_DMA_CH0 + i));
         // sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 2 + 16 + i, DIRQ(INT_APB_DMA_CH16 + i));
     }
@@ -423,7 +421,7 @@ static void tegra2_init(MachineState *machine)
 
     /* UARTD controller */
 //     sysbus_create_simple("tegra.uart", TEGRA_UARTA_BASE, DIRQ(INT_UARTA));
-    tegra_uartd_dev = serial_mm_init(sysmem, TEGRA_UARTD_BASE, 2,
+    serial_mm_init(sysmem, TEGRA_UARTD_BASE, 2,
                                      DIRQ(INT_UARTD), 115200,
                                      serial_hd(0),
                                      DEVICE_LITTLE_ENDIAN);
@@ -521,8 +519,8 @@ static void tegra2_init(MachineState *machine)
     sysbus_create_simple("tegra.pg", 0x60000000, NULL);
 
     /* PIO ethernet */
-    if (nd_table[0].used)
-        lan9118_init(&nd_table[0], 0xA0000000, DIRQ(INT_SW_RESERVED));
+    // if (nd_table[0].used)
+    //     lan9118_init(&nd_table[0], 0xA0000000, DIRQ(INT_SW_RESERVED));
 
     /* Multi-CPU shared resources access arbitration */
     tegra_arb_sema_dev = sysbus_create_varargs("tegra.arb_sema",
@@ -623,11 +621,11 @@ static void tegra2_init(MachineState *machine)
     cpu_set_pc(cs, BOOTROM_BASE);
 }
 
-static void tegra2_reset(MachineState *state)
+static void tegra2_reset(MachineState *state, ResetType type)
 {
 //     remote_io_init("10.1.1.3:45312");
     tegra_trace_init();
-    qemu_devices_reset();
+    qemu_devices_reset(type);
 
     tegra_cpu_reset_deassert(TEGRA2_COP, 1);
 }

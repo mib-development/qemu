@@ -177,7 +177,6 @@ struct SDState {
     uint32_t data_offset;
     size_t data_size;
     uint8_t data[512];
-    uint8_t ext_csd[512];
     qemu_irq readonly_cb;
     qemu_irq inserted_cb;
     QEMUTimer *ocr_power_timer;
@@ -625,7 +624,6 @@ static void sd_set_csd(SDState *sd, uint64_t size)
     sd->csd[15] = (sd_crc7(sd->csd, 15) << 1) | 1;
 }
 
-static void sd_set_rca(SDState *sd, uint16_t value)
 /* Relative Card Address register */
 
 static void sd_set_rca(SDState *sd, uint16_t value)
@@ -746,21 +744,6 @@ static void sd_response_r1_make(SDState *sd, uint8_t *response)
     /* Clear the "clear on read" status bits */
     sd->card_status &= ~CARD_STATUS_C;
 }
-
-// static void sd_response_r2_make(SDState *sd, uint8_t *response, uint8_t *data)
-// {
-//     int i;
-//     uint8_t inter[16];
-// 
-//     inter[15] = 0xCC;
-//     for (i = 0; i < 15; i++) {
-//         inter[14-i] = data[i];
-//     }
-// 
-//     for (i = 0; i < 16; i++) {
-//         response[i] = inter[(i&~3)|(3-(i&3))];
-//     }
-// }
 
 static void sd_response_r3_make(SDState *sd, uint8_t *response)
 {
@@ -2291,7 +2274,6 @@ send_response:
 
     case sd_r2_s:
         memcpy(response, sd->csd, sizeof(sd->csd));
-//         sd_response_r2_make(sd, response, sd->csd);
         rsplen = 16;
         break;
 
@@ -2777,7 +2759,7 @@ static void sd_realize(DeviceState *dev, Error **errp)
         }
 
         blk_size = blk_getlength(sd->blk);
-        if (blk_size > 0 && !is_power_of_2(blk_size) && !sd->emmc) {
+        if (blk_size > 0 && !is_power_of_2(blk_size)) {
             int64_t blk_size_aligned = pow2ceil(blk_size);
             char *blk_size_str;
 

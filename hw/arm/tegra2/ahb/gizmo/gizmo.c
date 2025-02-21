@@ -454,9 +454,9 @@ static void tegra_ahb_gizmo_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_legacy_reset(dc, tegra_ahb_gizmo_priv_reset);
     dc->realize = tegra_ahb_gizmo_priv_realize;
     dc->vmsd = &vmstate_tegra_ahb_gizmo;
-    dc->reset = tegra_ahb_gizmo_priv_reset;
 }
 
 static const TypeInfo tegra_ahb_gizmo_info = {
