@@ -42,11 +42,12 @@ struct M48txxISAState {
     ISADevice parent_obj;
     M48t59State state;
     uint32_t io_base;
+    uint8_t isairq;
     MemoryRegion io;
 };
 
 struct M48txxISADeviceClass {
-    ISADeviceClass parent_class;
+    DeviceClass parent_class;
     M48txxInfo info;
 };
 
@@ -79,6 +80,7 @@ static void m48txx_isa_toggle_lock(Nvram *obj, int lock)
 static Property m48t59_isa_properties[] = {
     DEFINE_PROP_INT32("base-year", M48txxISAState, state.base_year, 0),
     DEFINE_PROP_UINT32("iobase", M48txxISAState, io_base, 0x74),
+    DEFINE_PROP_UINT8("irq", M48txxISAState, isairq, 8),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -97,9 +99,14 @@ static void m48t59_isa_realize(DeviceState *dev, Error **errp)
     M48txxISAState *d = M48TXX_ISA(dev);
     M48t59State *s = &d->state;
 
+    if (d->isairq >= ISA_NUM_IRQS) {
+        error_setg(errp, "Maximum value for \"irq\" is: %u", ISA_NUM_IRQS - 1);
+        return;
+    }
+
     s->model = u->info.model;
     s->size = u->info.size;
-    isa_init_irq(isadev, &s->IRQ, 8);
+    s->IRQ = isa_get_irq(isadev, d->isairq);
     m48t59_realize_common(s, errp);
     memory_region_init_io(&d->io, OBJECT(dev), &m48t59_io_ops, s, "m48t59", 4);
     if (d->io_base != 0) {
@@ -113,7 +120,7 @@ static void m48txx_isa_class_init(ObjectClass *klass, void *data)
     NvramClass *nc = NVRAM_CLASS(klass);
 
     dc->realize = m48t59_isa_realize;
-    dc->reset = m48t59_reset_isa;
+    device_class_set_legacy_reset(dc, m48t59_reset_isa);
     device_class_set_props(dc, m48t59_isa_properties);
     nc->read = m48txx_isa_read;
     nc->write = m48txx_isa_write;

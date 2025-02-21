@@ -488,6 +488,8 @@ static void run_bench(void)
 {
     bench_func_t f;
 
+    set_float_2nan_prop_rule(float_2nan_prop_s_ab, &soft_status);
+
     f = bench_funcs[operation][precision];
     g_assert(f);
     f();
@@ -545,7 +547,8 @@ static int round_name_to_mode(const char *name)
     return -1;
 }
 
-static void QEMU_NORETURN die_host_rounding(enum rounding rounding)
+static G_NORETURN
+void die_host_rounding(enum rounding rounding)
 {
     fprintf(stderr, "fatal: '%s' rounding not supported on this host\n",
             round_names[rounding]);

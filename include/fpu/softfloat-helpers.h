@@ -75,6 +75,12 @@ static inline void set_floatx80_rounding_precision(FloatX80RoundPrec val,
     status->floatx80_rounding_precision = val;
 }
 
+static inline void set_float_2nan_prop_rule(Float2NaNPropRule rule,
+                                            float_status *status)
+{
+    status->float_2nan_prop_rule = rule;
+}
+
 static inline void set_flush_to_zero(bool val, float_status *status)
 {
     status->flush_to_zero = val;
@@ -126,6 +132,11 @@ get_floatx80_rounding_precision(float_status *status)
     return status->floatx80_rounding_precision;
 }
 
+static inline Float2NaNPropRule get_float_2nan_prop_rule(float_status *status)
+{
+    return status->float_2nan_prop_rule;
+}
+
 static inline bool get_flush_to_zero(float_status *status)
 {
     return status->flush_to_zero;
@@ -141,4 +152,4 @@ static inline bool get_default_nan_mode(float_status *status)
     return status->default_nan_mode;
 }
 
-#endif /* _SOFTFLOAT_HELPERS_H_ */
+#endif /* SOFTFLOAT_HELPERS_H */

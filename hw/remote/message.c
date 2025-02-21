@@ -8,7 +8,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
 
 #include "hw/remote/machine.h"
 #include "io/channel.h"
@@ -216,13 +215,10 @@ fail:
 static void process_device_reset_msg(QIOChannel *ioc, PCIDevice *dev,
                                      Error **errp)
 {
-    DeviceClass *dc = DEVICE_GET_CLASS(dev);
     DeviceState *s = DEVICE(dev);
     MPQemuMsg ret = { 0 };
 
-    if (dc->reset) {
-        dc->reset(s);
-    }
+    device_cold_reset(s);
 
     ret.cmd = MPQEMU_CMD_RET;
 

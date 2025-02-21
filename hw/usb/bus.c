@@ -2,6 +2,8 @@
 #include "hw/qdev-properties.h"
 #include "hw/usb.h"
 #include "qapi/error.h"
+#include "qapi/qapi-commands-machine.h"
+#include "qapi/type-helpers.h"
 #include "qemu/error-report.h"
 #include "qemu/module.h"
 #include "sysemu/sysemu.h"
@@ -67,7 +69,7 @@ const VMStateDescription vmstate_usb_device = {
     .version_id = 1,
     .minimum_version_id = 1,
     .post_load = usb_device_post_load,
-    .fields = (VMStateField[]) {
+    .fields = (const VMStateField[]) {
         VMSTATE_UINT8(addr, USBDevice),
         VMSTATE_INT32(state, USBDevice),
         VMSTATE_INT32(remote_wakeup, USBDevice),
@@ -82,7 +84,7 @@ const VMStateDescription vmstate_usb_device = {
 void usb_bus_new(USBBus *bus, size_t bus_size,
                  USBBusOps *ops, DeviceState *host)
 {
-    qbus_create_inplace(bus, bus_size, TYPE_USB_BUS, host, NULL);
+    qbus_init(bus, bus_size, TYPE_USB_BUS, host, NULL);
     qbus_set_bus_hotplug_handler(BUS(bus));
     bus->ops = ops;
     bus->busnr = next_usb_bus++;
@@ -96,19 +98,6 @@ void usb_bus_release(USBBus *bus)
     assert(next_usb_bus > 0);
 
     QTAILQ_REMOVE(&busses, bus, next);
-}
-
-USBBus *usb_bus_find(int busnr)
-{
-    USBBus *bus;
-
-    if (-1 == busnr)
-        return QTAILQ_FIRST(&busses);
-    QTAILQ_FOREACH(bus, &busses, next) {
-        if (bus->busnr == busnr)
-            return bus;
-    }
-    return NULL;
 }
 
 static void usb_device_realize(USBDevice *dev, Error **errp)
@@ -271,13 +260,14 @@ static void usb_qdev_realize(DeviceState *qdev, Error **errp)
     }
 
     if (dev->pcap_filename) {
-        int fd = qemu_open_old(dev->pcap_filename, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+        int fd = qemu_open_old(dev->pcap_filename,
+                               O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0666);
         if (fd < 0) {
             error_setg(errp, "open %s failed", dev->pcap_filename);
             usb_qdev_unrealize(qdev);
             return;
         }
-        dev->pcap = fdopen(fd, "w");
+        dev->pcap = fdopen(fd, "wb");
         usb_pcap_init(dev->pcap);
     }
 }
@@ -325,29 +315,6 @@ void usb_legacy_register(const char *typename, const char *usbdevice_name,
         f->usbdevice_init = usbdevice_init;
         legacy_usb_factory = g_slist_append(legacy_usb_factory, f);
     }
-}
-
-USBDevice *usb_new(const char *name)
-{
-    return USB_DEVICE(qdev_new(name));
-}
-
-static USBDevice *usb_try_new(const char *name)
-{
-    return USB_DEVICE(qdev_try_new(name));
-}
-
-bool usb_realize_and_unref(USBDevice *dev, USBBus *bus, Error **errp)
-{
-    return qdev_realize_and_unref(&dev->qdev, &bus->qbus, errp);
-}
-
-USBDevice *usb_create_simple(USBBus *bus, const char *name)
-{
-    USBDevice *dev = usb_new(name);
-
-    usb_realize_and_unref(dev, bus, &error_abort);
-    return dev;
 }
 
 static void usb_fill_port(USBPort *port, void *opaque, int index,
@@ -631,15 +598,16 @@ static char *usb_get_fw_dev_path(DeviceState *qdev)
     return fw_path;
 }
 
-void hmp_info_usb(Monitor *mon, const QDict *qdict)
+HumanReadableText *qmp_x_query_usb(Error **errp)
 {
+    g_autoptr(GString) buf = g_string_new("");
     USBBus *bus;
     USBDevice *dev;
     USBPort *port;
 
     if (QTAILQ_EMPTY(&busses)) {
-        monitor_printf(mon, "USB support not enabled\n");
-        return;
+        error_setg(errp, "USB support not enabled");
+        return NULL;
     }
 
     QTAILQ_FOREACH(bus, &busses, next) {
@@ -647,20 +615,23 @@ void hmp_info_usb(Monitor *mon, const QDict *qdict)
             dev = port->dev;
             if (!dev)
                 continue;
-            monitor_printf(mon, "  Device %d.%d, Port %s, Speed %s Mb/s, "
-                           "Product %s%s%s\n",
-                           bus->busnr, dev->addr, port->path,
-                           usb_speed(dev->speed), dev->product_desc,
-                           dev->qdev.id ? ", ID: " : "",
-                           dev->qdev.id ?: "");
+            g_string_append_printf(buf,
+                                   "  Device %d.%d, Port %s, Speed %s Mb/s, "
+                                   "Product %s%s%s\n",
+                                   bus->busnr, dev->addr, port->path,
+                                   usb_speed(dev->speed), dev->product_desc,
+                                   dev->qdev.id ? ", ID: " : "",
+                                   dev->qdev.id ?: "");
         }
     }
+
+    return human_readable_text_from_str(buf);
 }
 
 /* handle legacy -usbdevice cmd line option */
 USBDevice *usbdevice_create(const char *driver)
 {
-    USBBus *bus = usb_bus_find(-1 /* any */);
+    USBBus *bus = QTAILQ_FIRST(&busses);
     LegacyUSBFactory *f = NULL;
     Error *err = NULL;
     GSList *i;

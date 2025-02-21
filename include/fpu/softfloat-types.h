@@ -103,7 +103,7 @@ typedef struct {
 #define make_floatx80(exp, mant) ((floatx80) { mant, exp })
 #define make_floatx80_init(exp, mant) { .low = mant, .high = exp }
 typedef struct {
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
     uint64_t high, low;
 #else
     uint64_t low, high;
@@ -145,13 +145,20 @@ typedef enum __attribute__((__packed__)) {
  */
 
 enum {
-    float_flag_invalid   =  1,
-    float_flag_divbyzero =  4,
-    float_flag_overflow  =  8,
-    float_flag_underflow = 16,
-    float_flag_inexact   = 32,
-    float_flag_input_denormal = 64,
-    float_flag_output_denormal = 128
+    float_flag_invalid         = 0x0001,
+    float_flag_divbyzero       = 0x0002,
+    float_flag_overflow        = 0x0004,
+    float_flag_underflow       = 0x0008,
+    float_flag_inexact         = 0x0010,
+    float_flag_input_denormal  = 0x0020,
+    float_flag_output_denormal = 0x0040,
+    float_flag_invalid_isi     = 0x0080,  /* inf - inf */
+    float_flag_invalid_imz     = 0x0100,  /* inf * 0 */
+    float_flag_invalid_idi     = 0x0200,  /* inf / inf */
+    float_flag_invalid_zdz     = 0x0400,  /* 0 / 0 */
+    float_flag_invalid_sqrt    = 0x0800,  /* sqrt(-x) */
+    float_flag_invalid_cvti    = 0x1000,  /* non-nan to integer */
+    float_flag_invalid_snan    = 0x2000,  /* any operand was snan */
 };
 
 /*
@@ -164,6 +171,43 @@ typedef enum __attribute__((__packed__)) {
 } FloatX80RoundPrec;
 
 /*
+ * 2-input NaN propagation rule. Individual architectures have
+ * different rules for which input NaN is propagated to the output
+ * when there is more than one NaN on the input.
+ *
+ * If default_nan_mode is enabled then it is valid not to set a
+ * NaN propagation rule, because the softfloat code guarantees
+ * not to try to pick a NaN to propagate in default NaN mode.
+ * When not in default-NaN mode, it is an error for the target
+ * not to set the rule in float_status, and we will assert if
+ * we need to handle an input NaN and no rule was selected.
+ */
+typedef enum __attribute__((__packed__)) {
+    /* No propagation rule specified */
+    float_2nan_prop_none = 0,
+    /* Prefer SNaN over QNaN, then operand A over B */
+    float_2nan_prop_s_ab,
+    /* Prefer SNaN over QNaN, then operand B over A */
+    float_2nan_prop_s_ba,
+    /* Prefer A over B regardless of SNaN vs QNaN */
+    float_2nan_prop_ab,
+    /* Prefer B over A regardless of SNaN vs QNaN */
+    float_2nan_prop_ba,
+    /*
+     * This implements x87 NaN propagation rules:
+     * SNaN + QNaN => return the QNaN
+     * two SNaNs => return the one with the larger significand, silenced
+     * two QNaNs => return the one with the larger significand
+     * SNaN and a non-NaN => return the SNaN, silenced
+     * QNaN and a non-NaN => return the QNaN
+     *
+     * If we get down to comparing significands and they are the same,
+     * return the NaN with the positive sign bit (if any).
+     */
+    float_2nan_prop_x87,
+} Float2NaNPropRule;
+
+/*
  * Floating Point Status. Individual architectures may maintain
  * several versions of float_status for different functions. The
  * correct status for the operation is then passed by reference to
@@ -171,9 +215,10 @@ typedef enum __attribute__((__packed__)) {
  */
 
 typedef struct float_status {
+    uint16_t float_exception_flags;
     FloatRoundMode float_rounding_mode;
-    uint8_t     float_exception_flags;
     FloatX80RoundPrec floatx80_rounding_precision;
+    Float2NaNPropRule float_2nan_prop_rule;
     bool tininess_before_rounding;
     /* should denormalised results go to zero and set the inexact flag? */
     bool flush_to_zero;
@@ -188,6 +233,10 @@ typedef struct float_status {
     bool snan_bit_is_one;
     bool use_first_nan;
     bool no_signaling_nans;
+    /* should overflowed results subtract re_bias to its exponent? */
+    bool rebias_overflow;
+    /* should underflowed results add re_bias to its exponent? */
+    bool rebias_underflow;
 } float_status;
 
 #endif /* SOFTFLOAT_TYPES_H */

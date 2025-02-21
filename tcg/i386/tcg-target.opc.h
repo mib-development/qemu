@@ -25,7 +25,6 @@
  */
 
 DEF(x86_shufps_vec, 1, 2, 1, IMPLVEC)
-DEF(x86_vpblendvb_vec, 1, 3, 0, IMPLVEC)
 DEF(x86_blend_vec, 1, 2, 1, IMPLVEC)
 DEF(x86_packss_vec, 1, 2, 0, IMPLVEC)
 DEF(x86_packus_vec, 1, 2, 0, IMPLVEC)
@@ -33,3 +32,6 @@ DEF(x86_psrldq_vec, 1, 1, 1, IMPLVEC)
 DEF(x86_vperm2i128_vec, 1, 2, 1, IMPLVEC)
 DEF(x86_punpckl_vec, 1, 2, 0, IMPLVEC)
 DEF(x86_punpckh_vec, 1, 2, 0, IMPLVEC)
+DEF(x86_vpshldi_vec, 1, 2, 1, IMPLVEC)
+DEF(x86_vpshldv_vec, 1, 3, 0, IMPLVEC)
+DEF(x86_vpshrdv_vec, 1, 3, 0, IMPLVEC)

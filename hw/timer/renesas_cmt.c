@@ -57,7 +57,7 @@ static void update_events(RCMTState *cmt, int ch)
 
     if ((cmt->cmstr & (1 << ch)) == 0) {
         /* count disable, so not happened next event. */
-        return ;
+        return;
     }
     next_time = cmt->cmcor[ch] - cmt->cmcnt[ch];
     next_time *= NANOSECONDS_PER_SECOND;
@@ -242,7 +242,7 @@ static const VMStateDescription vmstate_rcmt = {
     .name = "rx-cmt",
     .version_id = 1,
     .minimum_version_id = 1,
-    .fields = (VMStateField[]) {
+    .fields = (const VMStateField[]) {
         VMSTATE_UINT16(cmstr, RCMTState),
         VMSTATE_UINT16_ARRAY(cmcr, RCMTState, CMT_CH),
         VMSTATE_UINT16_ARRAY(cmcnt, RCMTState, CMT_CH),
@@ -263,7 +263,7 @@ static void rcmt_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     dc->vmsd = &vmstate_rcmt;
-    dc->reset = rcmt_reset;
+    device_class_set_legacy_reset(dc, rcmt_reset);
     device_class_set_props(dc, rcmt_properties);
 }
 

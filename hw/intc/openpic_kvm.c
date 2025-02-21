@@ -234,6 +234,7 @@ static void kvm_openpic_realize(DeviceState *dev, Error **errp)
 
     opp->mem_listener.region_add = kvm_openpic_region_add;
     opp->mem_listener.region_del = kvm_openpic_region_del;
+    opp->mem_listener.name = "openpic-kvm";
     memory_listener_register(&opp->mem_listener, &address_space_memory);
 
     /* indicate pic capabilities */
@@ -273,7 +274,7 @@ static void kvm_openpic_class_init(ObjectClass *oc, void *data)
 
     dc->realize = kvm_openpic_realize;
     device_class_set_props(dc, kvm_openpic_properties);
-    dc->reset = kvm_openpic_reset;
+    device_class_set_legacy_reset(dc, kvm_openpic_reset);
     set_bit(DEVICE_CATEGORY_MISC, dc->categories);
 }
 
