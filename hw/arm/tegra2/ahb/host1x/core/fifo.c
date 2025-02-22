@@ -58,14 +58,16 @@ unsigned int host1x_get_fifo_entries_nb(struct host1x_fifo *fifo)
 
 void host1x_fifo_push(struct host1x_fifo *fifo, uint32_t data)
 {
-    bool lock = false;
+    bool lock = bql_locked();
     qemu_mutex_lock(&fifo->mutex);
 
-    while (fifo->entries_nb == fifo->size) {
-        bql_unlock();
-        lock = true;
-
-        qemu_cond_wait(&fifo->free_cond, &fifo->mutex);
+    if (fifo->entries_nb == fifo->size) {
+        if (lock) {
+            bql_unlock();
+        }
+        while (fifo->entries_nb == fifo->size) {
+            qemu_cond_wait(&fifo->free_cond, &fifo->mutex);
+        }
     }
 
     fifo->data[fifo->last++] = data;

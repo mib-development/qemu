@@ -72,6 +72,12 @@ static int tegra_evp_cpu_index(uint64_t offset)
     return cpu_index;
 }
 
+uint64_t tegra_evp_get_cpu_reset_vector(void) {
+    tegra_evp *s = TEGRA_EVP(tegra_evp_dev);
+
+    return s->evp_regs[0][0];
+}
+
 static uint64_t tegra_evp_priv_read(void *opaque, hwaddr offset,
                                     unsigned size)
 {

@@ -21,7 +21,7 @@
 #define TEGRA_FLOW_CTRL_H
 
 #define HALT_CPU0_EVENTS_OFFSET 0x0
-#define HALT_CPU_EVENTS_RESET  0x00000000
+#define HALT_CPU0_EVENTS_RESET  0x00000000
 typedef union halt_events_u {
     struct {
         unsigned int zero:8;
@@ -102,12 +102,16 @@ typedef union xrq_events_u {
 } xrq_events_t;
 
 #define HALT_CPU1_EVENTS_OFFSET 0x14
+#define HALT_CPUX_EVENTS_RESET  0x40000000
+
 #define CPU1_CSR_OFFSET 0x18
 
 #define HALT_CPU2_EVENTS_OFFSET 0x1C
+
 #define CPU2_CSR_OFFSET 0x20
 
 #define HALT_CPU3_EVENTS_OFFSET 0x24
+
 #define CPU3_CSR_OFFSET 0x28
 
 #define CLUSTER_CONTROL_OFFSET 0x2C

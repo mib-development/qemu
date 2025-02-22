@@ -93,7 +93,7 @@ int tegra_cpu_halted(int cpu_id)
 void tegra_cpu_unhalt(int cpu_id)
 {
     if (!tcpu_halted[cpu_id]) {
-//         TPRINT("%s cpu %d NOT HALTED!\n", __func__, cpu_id);
+        TPRINT("%s cpu %d NOT HALTED!\n", __func__, cpu_id);
         return;
     }
 

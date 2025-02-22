@@ -191,6 +191,9 @@ qemu_create_displaysurface_guestmem(int width, int height,
 
     size = (hwaddr)linesize * height;
     data = cpu_physical_memory_map(addr, &size, 0);
+    if (data == NULL) {
+        return NULL;
+    }
     if (size != (hwaddr)linesize * height) {
         cpu_physical_memory_unmap(data, size, 0, 0);
         return NULL;

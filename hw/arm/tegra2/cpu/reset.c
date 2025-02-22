@@ -29,6 +29,7 @@
 #include "devices.h"
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
+#include "../ppsb/evp/evp.h"
 
 #include "tegra_cpu_priv.h"
 
@@ -131,7 +132,13 @@ void tegra_cpu_reset_deassert(int cpu_id, int flow)
     if (tcpu_in_reset[cpu_id]) {
         tcpu_in_reset[cpu_id] = 0;
 
-        arm_set_cpu_on(cpu_id, 0xfff00000, 0, 1, 0);
+        if (cpu_id != TEGRA2_COP) {
+            uint64_t value = tegra_evp_get_cpu_reset_vector();
+            printf("tegra_cpu_reset_deassert: cpu_id=%d, value=0x%lx\n", cpu_id, value);
+            arm_set_cpu_on(cpu_id, value, 0, 1, 0);
+        } else {
+            arm_set_cpu_on(cpu_id, 0xfff00000, 0, 1, 0);
+        }
 
         /* Force poweroff work queuing.  */
         cpu->power_state = PSCI_ON;

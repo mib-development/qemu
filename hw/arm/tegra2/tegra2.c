@@ -51,7 +51,7 @@
 
 #define BOOTLOADER_BASE 0x84008000
 #define BOOTROM_BASE    0xFFF00000
-#define BOOTROM_SIZE    0xBfff
+#define BOOTROM_SIZE    0xbfff
 // #define BOOTMON_BASE    0xF0010000
 
 #define RW  0

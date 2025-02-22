@@ -1970,7 +1970,7 @@ typedef union clk_enb_u_clr_u {
 } clk_enb_u_clr_t;
 
 #define RST_CPU_CMPLX_SET_OFFSET 0x340
-#define RST_CPU_CMPLX_SET_RESET  0x00002222
+#define RST_CPU_CMPLX_SET_RESET  0x0000EEEE
 typedef union rst_cpu_cmplx_set_u {
     struct {
         unsigned int set_cpureset0:1;       /* 1 = assert nCPURESET to CPU0 */
@@ -2000,7 +2000,7 @@ typedef union rst_cpu_cmplx_set_u {
 } rst_cpu_cmplx_set_t;
 
 #define RST_CPU_CMPLX_CLR_OFFSET 0x344
-#define RST_CPU_CMPLX_CLR_RESET  0x00002222
+#define RST_CPU_CMPLX_CLR_RESET  0x0000EEEE
 typedef union rst_cpu_cmplx_clr_u {
     struct {
         unsigned int clr_cpureset0:1;       /* 1 = deassert nCPURESET to CPU0 */

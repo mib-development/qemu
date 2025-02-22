@@ -74,21 +74,21 @@ uint32_t tegra_get_wfi_bitmap(void)
     return wfi_bitmap;
 }
 
-// void HELPER(wfe)(CPUARMState *env)
-// {
-//     CPUState *cs = env_cpu(env);
-//     int cpu_id = cs->cpu_index;
+void HELPER(wfe)(CPUARMState *env)
+{
+    CPUState *cs = env_cpu(env);
+    int cpu_id = cs->cpu_index;
 
-//     if (is_tegra_cpu(cpu_id)) {
-// //         TPRINT("WFE: cpu %d\n", cpu_id);
+    if (is_tegra_cpu(cpu_id)) {
+        TPRINT("WFE: cpu %d\n", cpu_id);
 
-//         cs->halted = HALT_WFE;
+        cs->halted = HALT_WFE;
 
-//         tegra_flow_wfe_handle(cpu_id);
+        tegra_flow_wfe_handle(cpu_id);
 
-//         /* Won't return here if flow powergated CPU.  */
-//         cs->halted = 0;
-//     }
+        /* Won't return here if flow powergated CPU. */
+        cs->halted = 0;
+    }
 
-//     HELPER(yield)(env);
-// }
+    HELPER(yield)(env);
+}

@@ -91,6 +91,7 @@ static uint64_t tegra_cop_mmu_priv_read(void *opaque, hwaddr offset,
     }
 
     TRACE_READ(s->iomem.addr, offset, ret);
+    printf("tegra_cop_mmu_priv_read: offset=0x%lx, ret=0x%lx\n", offset, ret);
 
     return ret;
 }
@@ -100,6 +101,8 @@ static void tegra_cop_mmu_priv_write(void *opaque, hwaddr offset,
 {
     tegra_cop_mmu *s = opaque;
     uint32_t old __attribute__ ((unused));
+
+    printf("tegra_cop_mmu_priv_write: offset=0x%lx, value=0x%lx\n", offset, value);
 
     /* MMU is in main address space for simplicity. Avoid CPU access.  */
     if (current_cpu != qemu_get_cpu(TEGRA2_COP)) {

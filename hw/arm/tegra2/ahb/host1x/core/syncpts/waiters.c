@@ -118,9 +118,14 @@ void host1x_wait_syncpt(struct host1x_syncpt_waiter *waiter,
 
     syncpt_unlock(syncpt);
 
-    bql_unlock();
+    bool locked = bql_locked();
+    if (locked) {
+        bql_unlock();
+    }
     qemu_event_wait(&waiter->syncpt_ev);
-    bql_lock();
+    if (locked) {
+        bql_lock();
+    }
 }
 
 void host1x_wait_syncpt_incr(struct host1x_syncpt_waiter *waiter,
@@ -137,9 +142,14 @@ void host1x_wait_syncpt_incr(struct host1x_syncpt_waiter *waiter,
 
     syncpt_unlock(syncpt);
 
-    bql_unlock();
+    bool locked = bql_locked();
+    if (locked) {
+        bql_unlock();
+    }
     qemu_event_wait(&waiter->syncpt_ev);
-    bql_lock();
+    if (locked) {
+        bql_lock();
+    }
 }
 
 void host1x_update_threshold_waiters_base(uint32_t syncpt_base_id)
@@ -198,7 +208,12 @@ void host1x_wait_syncpt_base(struct host1x_syncpt_waiter *waiter,
 
     syncpt_unlock(syncpt);
 
-    bql_unlock();
+    bool locked = bql_locked();
+    if (locked) {
+        bql_unlock();
+    }
     qemu_event_wait(&waiter->syncpt_ev);
-    bql_lock();
+    if (locked) {
+        bql_lock();
+    }
 }

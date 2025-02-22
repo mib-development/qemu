@@ -224,7 +224,6 @@ fired:
 static void tegra_flow_gen_interrupt(tegra_flow *s, int cpu_id)
 {
     s->csr[cpu_id].intr_flag = 1;
-//     s->halt_events[cpu_id].mode &= ~INTERRUPT;
 
     /* ??? TODO: Check if IRQ is deprecated on Tegra2.  */
     if (cpu_id != TEGRA2_COP) {
@@ -447,13 +446,15 @@ static void tegra_flow_timer_event(void *opaque)
     tegra_flow *s = arg->s;
     int cpu_id = arg->cpu_id;
 
-    s->halt_events[cpu_id].zero = MAX(0, s->halt_events[cpu_id].zero - 1);
+    if (s->halt_events[cpu_id].zero > 0) {
+        s->halt_events[cpu_id].zero = s->halt_events[cpu_id].zero - 1;
+    }
 
     // TPRINT("tegra_flow: event on cpu %d zero=%u event_flag=%d mode=%s\n",
     //        cpu_id, s->halt_events[cpu_id].zero, s->csr[cpu_id].event_flag,
     //        tegra_flow_mode_name(s->halt_events[cpu_id].mode));
 
-    if (s->halt_events[cpu_id].zero) {
+    if (s->halt_events[cpu_id].zero > 0) {
         return;
     }
 
@@ -519,8 +520,8 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
 {
     int is_cop = (cpu_id == TEGRA2_COP);
 
-//     TPRINT("%s mode=%s in_wfe=%d cpu %d\n", __func__,
-//            tegra_flow_mode_name(s->halt_events[cpu_id].mode), in_wfe, cpu_id);
+    TPRINT("%s mode=%s in_wfe=%d cpu %d\n", __func__,
+           tegra_flow_mode_name(s->halt_events[cpu_id].mode), in_wfe, cpu_id);
 
     if (in_wfe) {
         CPUState *cs = CPU(qemu_get_cpu(cpu_id));
@@ -591,7 +592,6 @@ static void tegra_flow_event_write(tegra_flow *s, hwaddr offset,
                                    uint32_t value, int cpu_id)
 {
     TRACE_WRITE(s->iomem.addr, offset, s->halt_events[cpu_id].reg32, value);
-
     s->halt_events[cpu_id].reg32 = value;
     tegra_flow_update_mode(s, cpu_id, 0);
 }
@@ -703,10 +703,10 @@ static void tegra_flow_priv_reset(DeviceState *dev)
 {
     tegra_flow *s = TEGRA_FLOW_CTRL(dev);
 
-    s->halt_events[TEGRA2_A9_CORE0].reg32 = HALT_CPU_EVENTS_RESET;
-    s->halt_events[TEGRA2_A9_CORE1].reg32 = HALT_CPU_EVENTS_RESET;
-    s->halt_events[TEGRA2_A9_CORE2].reg32 = HALT_CPU_EVENTS_RESET;
-    s->halt_events[TEGRA2_A9_CORE3].reg32 = HALT_CPU_EVENTS_RESET;
+    s->halt_events[TEGRA2_A9_CORE0].reg32 = HALT_CPU0_EVENTS_RESET;
+    s->halt_events[TEGRA2_A9_CORE1].reg32 = HALT_CPUX_EVENTS_RESET;
+    s->halt_events[TEGRA2_A9_CORE2].reg32 = HALT_CPUX_EVENTS_RESET;
+    s->halt_events[TEGRA2_A9_CORE3].reg32 = HALT_CPUX_EVENTS_RESET;
     s->csr[TEGRA2_A9_CORE0].reg32 = CPU_CSR_RESET;
     s->csr[TEGRA2_A9_CORE1].reg32 = CPU_CSR_RESET;
     s->csr[TEGRA2_A9_CORE2].reg32 = CPU_CSR_RESET;
