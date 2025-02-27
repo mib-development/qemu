@@ -35,6 +35,7 @@ arm_ss.add(files(
   'ahb/bse/bse_remote.c',
   'ahb/dma/ahb_dma.c',
   'ahb/gizmo/gizmo.c',
+  'ahb/gmi/gmi.c',
   'ahb/usb/usb.c',
 
   'apb/fuse/fuse.c',
@@ -51,6 +52,8 @@ arm_ss.add(files(
   'remote/remote_io.c',
   'remote/remote_iram.c',
   'remote/remote_mem.c',
+
+  'tps65911/tps65911.c',
 
   'devices.c',
   'irq_dispatcher.c',

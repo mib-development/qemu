@@ -30,7 +30,7 @@
 #define TEGRA_GPIO(obj) OBJECT_CHECK(tegra_gpio, (obj), TYPE_TEGRA_GPIO)
 #define DEFINE_REG32(reg) reg##_t reg
 
-#define BANKS_NB    7
+#define BANKS_NB    8
 #define PORTS_NB    4
 
 typedef struct tegra_gpio_port_state {
@@ -48,6 +48,7 @@ typedef struct tegra_gpio_port_state {
     DEFINE_REG32(gpio_msk_int_sta);
     DEFINE_REG32(gpio_msk_int_enb);
     DEFINE_REG32(gpio_msk_int_lvl);
+    DEFINE_REG32(gpio_lock);
 } tegra_gpio_port;
 
 static const VMStateDescription vmstate_tegra_gpio_port = {
@@ -68,6 +69,7 @@ static const VMStateDescription vmstate_tegra_gpio_port = {
         VMSTATE_UINT32(gpio_msk_int_sta.reg32, tegra_gpio_port),
         VMSTATE_UINT32(gpio_msk_int_enb.reg32, tegra_gpio_port),
         VMSTATE_UINT32(gpio_msk_int_lvl.reg32, tegra_gpio_port),
+        VMSTATE_UINT32(gpio_lock.reg32, tegra_gpio_port),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -83,7 +85,6 @@ typedef struct tegra_gpio_state {
 static const VMStateDescription vmstate_tegra_gpio = {
     .name = "tegra.gpio",
     .version_id = 1,
-    .minimum_version_id = 1,
     .fields = (VMStateField[]) {
         VMSTATE_STRUCT_ARRAY(regs, tegra_gpio, BANKS_NB * PORTS_NB, 0,
                              vmstate_tegra_gpio_port, tegra_gpio_port),
@@ -96,14 +97,18 @@ static uint64_t tegra_gpio_priv_read(void *opaque, hwaddr offset,
 {
     tegra_gpio *s = opaque;
     tegra_gpio_port *p;
-    int bank = (offset >> 7) & 0x7;
-    int port = (offset & 0xf) >> 2;
+    int bank = (offset >> 8) & 0xF;
+    int port = (offset >> 2) & 0x3;
+
+    printf("tegra_gpio_priv_read: bank=%d, port=%d, register=0x%lx, offset=0x%lx\n",
+           bank, port, offset & 0xF0, offset);
+
     int port_nb = bank * PORTS_NB + port;
     uint64_t ret = 0;
 
     p = &s->regs[port_nb];
 
-    switch (offset & 0x870) {
+    switch (offset & 0xF0) {
     case GPIO_CNF_OFFSET:
         ret = p->gpio_cnf.reg32;
         break;
@@ -115,6 +120,9 @@ static uint64_t tegra_gpio_priv_read(void *opaque, hwaddr offset,
         break;
     case GPIO_IN_OFFSET:
         ret = p->gpio_in.reg32;
+        if (bank == 7 && port == 0) { // GPIO8, Port CC
+            ret |= (1 << 5); // Normal boot
+        }
         break;
     case GPIO_INT_STA_OFFSET:
         ret = p->gpio_int_sta.reg32;
@@ -146,6 +154,9 @@ static uint64_t tegra_gpio_priv_read(void *opaque, hwaddr offset,
     case GPIO_MSK_INT_LVL_OFFSET:
         ret = p->gpio_msk_int_lvl.reg32;
         break;
+    case GPIO_LOCK_OFFSET:
+        ret = p->gpio_lock.reg32;
+        break;
     default:
         break;
     }
@@ -160,12 +171,15 @@ static void tegra_gpio_priv_write(void *opaque, hwaddr offset,
 {
     tegra_gpio *s = opaque;
     tegra_gpio_port *p;
-    int bank = (offset >> 7) & 0x7;
-    int port = (offset & 0xf) >> 2;
+    int bank = (offset >> 8) & 0xF;
+    int port = (offset >> 2) & 0x3;
+
+    printf("tegra_gpio_priv_write: bank=%d, port=%d, register=0x%lx, value=0x%lx, offset=0x%lx\n",
+           bank, port, offset & 0xF0, value, offset);
 
     p = &s->regs[bank * PORTS_NB + port];
 
-    switch (offset & 0x870) {
+    switch (offset & 0xF0) {
     case GPIO_CNF_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, p->gpio_cnf.reg32, value);
         p->gpio_cnf.reg32 = value;
@@ -222,6 +236,10 @@ static void tegra_gpio_priv_write(void *opaque, hwaddr offset,
         TRACE_WRITE(s->iomem.addr, offset, p->gpio_msk_int_lvl.reg32, value);
         p->gpio_msk_int_lvl.reg32 = value;
         break;
+    case GPIO_LOCK_OFFSET:
+        TRACE_WRITE(s->iomem.addr, offset, p->gpio_lock.reg32, value);
+        p->gpio_lock.reg32 = value;
+        break;
     default:
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
         break;
@@ -250,6 +268,7 @@ static void tegra_gpio_priv_reset(DeviceState *dev)
         p->gpio_msk_int_sta.reg32 = GPIO_MSK_INT_STA_RESET;
         p->gpio_msk_int_enb.reg32 = GPIO_MSK_INT_ENB_RESET;
         p->gpio_msk_int_lvl.reg32 = GPIO_MSK_INT_LVL_RESET;
+        p->gpio_lock.reg32 = GPIO_LOCK_RESET;
     }
 }
 

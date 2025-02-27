@@ -37,14 +37,18 @@
 #include "sysemu/cpus.h"
 
 #include "hw/hw.h"
+#include "hw/i2c/i2c.h"
 #include "net/net.h"
 
 #include "devices.h"
 #include "iomap.h"
 #include "irqs.h"
 #include "remote_io.h"
+#include "apb/i2c/i2c.h"
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
+
+#include "bundle/boot_iram.bin.h"
 
 #define DIRQ(X) qdev_get_gpio_in(tegra_irq_dispatcher_dev, X)
 #define DIRQ_INT(X) qdev_get_gpio_in(tegra_irq_dispatcher_dev, X + INT_MAIN_NR)
@@ -207,14 +211,16 @@ static void load_memory_images(MachineState *machine)
     //                           BOOTLOADER_BASE, &address_space_memory);
     // }
 
-    // if (iram_path != NULL) {
-    //     /* Load BIT */
-    //     assert(load_image_targphys(iram_path, TEGRA_IRAM_BASE,
-    //                                TEGRA_IRAM_SIZE) > 0);
-    // } else {
+    const char *iram_path = "/home/iscle/Documents/mib/tegra3_iram.bin";
+    if (iram_path != NULL) {
+        /* Load BIT */
+        assert(load_image_targphys(iram_path, TEGRA_IRAM_BASE,
+                                   TEGRA_IRAM_SIZE) > 0);
+    }
+    // else {
     //     printf("-iram not specified, falling back to bundled\n");
-    //     rom_add_blob_fixed_as("iram", iram_bin, iram_bin_len,
-    //                           TEGRA_IRAM_BASE, &address_space_memory);
+        // rom_add_blob_fixed_as("iram", iram_bin, iram_bin_len,
+        //                       TEGRA_IRAM_BASE, &address_space_memory);
     // }
 
     /* Load IROM */
@@ -244,15 +250,15 @@ static void tegra2_init(MachineState *machine)
     memory_region_add_and_init_ram(sysmem, "tegra.dram",
                                    TEGRA_DRAM_BASE, machine->ram_size, RW);
 
-    // memory_region_add_and_init_ram(sysmem, "tegra.hi-vec",
-    //                                0xffff0000, SZ_64K, RW);
+    memory_region_add_and_init_ram(sysmem, "tegra.hi-vec",
+                                   0xffff0000, SZ_64K, RW);
 
     // memory_region_add_and_init_ram(sysmem, "tegra.bootmon",
     //                                BOOTMON_BASE, TARGET_PAGE_SIZE, RO);
 
     /* Internal static RAM */
-    // memory_region_add_and_init_ram(sysmem, "tegra.iram",
-    //                                TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE, RW);
+    memory_region_add_and_init_ram(sysmem, "tegra.iram",
+                                   TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE, RW);
 
     /* Map 0x400-0x40000 of IRAM to remote device.  */
     // memory_region_add_and_init_ram(sysmem, "tegra.iram",
@@ -344,7 +350,7 @@ static void tegra2_init(MachineState *machine)
     sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 1, DIRQ(INT_APB_DMA_COP));
     for (i = 0; i < 16; i++) {
         sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 2 + i, DIRQ(INT_APB_DMA_CH0 + i));
-        // sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 2 + 16 + i, DIRQ(INT_APB_DMA_CH16 + i));
+        sysbus_connect_irq(SYS_BUS_DEVICE(tegra_apb_dma_dev), 2 + 16 + i, DIRQ(INT_APB_DMA_CH16 + i));
     }
 
     /* APB bus controller */
@@ -366,7 +372,8 @@ static void tegra2_init(MachineState *machine)
                                             DIRQ(INT_GPIO1), DIRQ(INT_GPIO2),
                                             DIRQ(INT_GPIO3), DIRQ(INT_GPIO4),
                                             DIRQ(INT_GPIO5), DIRQ(INT_GPIO6),
-                                            DIRQ(INT_GPIO7), NULL);
+                                            DIRQ(INT_GPIO7), DIRQ(INT_GPIO8),
+                                            NULL);
 
     /* Power managment controller */
     tegra_pmc_dev = sysbus_create_simple("tegra.pmc", TEGRA_PMC_BASE, NULL);
@@ -375,29 +382,29 @@ static void tegra2_init(MachineState *machine)
     tegra_rtc_dev = sysbus_create_simple("tegra.rtc",
                                          TEGRA_RTC_BASE, DIRQ(INT_RTC));
 
-    /* SDHCI4 */
-    {
-        DeviceState *carddev;
-        BlockBackend *blk;
-        DriveInfo *di;
+//     /* SDHCI4 */
+//     {
+//         DeviceState *carddev;
+//         BlockBackend *blk;
+//         DriveInfo *di;
 
-        tegra_sdhci4_dev = qdev_new(TYPE_SYSBUS_SDHCI);
-        qdev_prop_set_uint32(tegra_sdhci4_dev, "capareg", 0x5780A8A);
-        sysbus_realize_and_unref(SYS_BUS_DEVICE(tegra_sdhci4_dev), &error_fatal);
+//         tegra_sdhci4_dev = qdev_new(TYPE_SYSBUS_SDHCI);
+//         qdev_prop_set_uint32(tegra_sdhci4_dev, "capareg", 0x5780A8A);
+//         sysbus_realize_and_unref(SYS_BUS_DEVICE(tegra_sdhci4_dev), &error_fatal);
 
-        sysbus_mmio_map(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, TEGRA_SDMMC4_BASE);
-        sysbus_connect_irq(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, DIRQ(INT_SDMMC4));
+//         sysbus_mmio_map(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, TEGRA_SDMMC4_BASE);
+//         sysbus_connect_irq(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, DIRQ(INT_SDMMC4));
 
-        di = drive_get(IF_SD, 0, 0);
-        blk = di ? blk_by_legacy_dinfo(di) : NULL;
-        carddev = qdev_new(TYPE_SD_CARD);
-        qdev_prop_set_drive(carddev, "drive", blk);
-        // qdev_prop_set_bit(carddev, "emmc", false);
-        qdev_realize_and_unref(carddev, qdev_get_child_bus(tegra_sdhci4_dev, "sd-bus"), &error_fatal);
+//         di = drive_get(IF_SD, 0, 0);
+//         blk = di ? blk_by_legacy_dinfo(di) : NULL;
+//         carddev = qdev_new(TYPE_SD_CARD);
+//         qdev_prop_set_drive(carddev, "drive", blk);
+//         // qdev_prop_set_bit(carddev, "emmc", false);
+//         qdev_realize_and_unref(carddev, qdev_get_child_bus(tegra_sdhci4_dev, "sd-bus"), &error_fatal);
 
-//         tegra_sdhci4_dev = sysbus_create_simple("tegra.sdhci",
-//                                                 TEGRA_SDMMC4_BASE, DIRQ(INT_SDMMC4));
-    }
+// //         tegra_sdhci4_dev = sysbus_create_simple("tegra.sdhci",
+// //                                                 TEGRA_SDMMC4_BASE, DIRQ(INT_SDMMC4));
+//     }
 
     /* Timer1 */
     tegra_timer1_dev = sysbus_create_simple("tegra.timer",
@@ -419,11 +426,29 @@ static void tegra2_init(MachineState *machine)
     tegra_timer4_dev = sysbus_create_simple("tegra.timer",
                                             TEGRA_TMR4_BASE, DIRQ(INT_TMR4));
 
+    sysbus_create_simple("tegra.gmi", TEGRA_SNOR_BASE, NULL);
+
     /* UARTD controller */
 //     sysbus_create_simple("tegra.uart", TEGRA_UARTA_BASE, DIRQ(INT_UARTA));
+    serial_mm_init(sysmem, TEGRA_UARTA_BASE, 2,
+                                     DIRQ(INT_UARTA), 115200,
+                                     serial_hd(0),
+                                     DEVICE_LITTLE_ENDIAN);
+    serial_mm_init(sysmem, TEGRA_UARTB_BASE, 2,
+                                     DIRQ(INT_UARTB), 115200,
+                                     serial_hd(1),
+                                     DEVICE_LITTLE_ENDIAN);
+    serial_mm_init(sysmem, TEGRA_UARTC_BASE, 2,
+                                     DIRQ(INT_UARTC), 115200,
+                                     serial_hd(2),
+                                     DEVICE_LITTLE_ENDIAN);
     serial_mm_init(sysmem, TEGRA_UARTD_BASE, 2,
                                      DIRQ(INT_UARTD), 115200,
-                                     serial_hd(0),
+                                     serial_hd(3),
+                                     DEVICE_LITTLE_ENDIAN);
+    serial_mm_init(sysmem, TEGRA_UARTE_BASE, 2,
+                                     DIRQ(INT_UARTE), 115200,
+                                     serial_hd(4),
                                      DEVICE_LITTLE_ENDIAN);
 
     /* USB2 controllers */
@@ -483,12 +508,18 @@ static void tegra2_init(MachineState *machine)
 //                           DIRQ(INT_VDE_SXE), NULL);
 
     /* I2C controllers */
-    tegra_idc1_dev = sysbus_create_simple("tegra-i2c",
+    tegra_idc1_dev = sysbus_create_simple("tegra.i2c",
                                           TEGRA_I2C_BASE, DIRQ(INT_I2C));
-    tegra_idc2_dev = sysbus_create_simple("tegra-i2c",
+    tegra_idc2_dev = sysbus_create_simple("tegra.i2c",
                                           TEGRA_I2C2_BASE, DIRQ(INT_I2C2));
-    tegra_idc3_dev = sysbus_create_simple("tegra-i2c",
+    tegra_idc3_dev = sysbus_create_simple("tegra.i2c",
                                           TEGRA_I2C3_BASE, DIRQ(INT_I2C3));
+    tegra_idc4_dev = sysbus_create_simple("tegra.i2c",
+                                          TEGRA_I2C4_BASE, DIRQ(INT_I2C4));
+    tegra_idc5_dev = sysbus_create_simple("tegra.i2c",
+                                          TEGRA_I2C5_BASE, DIRQ(INT_I2C5));
+
+    i2c_slave_create_simple(tegra_i2c_get_bus(tegra_idc5_dev), "tps65911", 0x2d);
     // tegra_dvc_dev = qdev_new("tegra-i2c");
     // object_property_set_bool(tegra_dvc_dev, "is_dvc", true, &error_abort);
     // sysbus_realize_and_unref(SYS_BUS_DEVICE(tegra_dvc_dev), &error_fatal);

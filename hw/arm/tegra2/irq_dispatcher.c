@@ -47,7 +47,7 @@ static void tegra_irq_dispatcher_set_irq_dev(void *opaque, int irq, int level)
     A9MPPrivState *a9mpcore = A9MPCORE_PRIV(tegra_a9mpcore_dev);
     tegra_ictlr *ictlr = TEGRA_ICTLR(tegra_ictlr_dev);
 
-    TPRINT("%s irq=%d lvl=%d\n", __func__, irq, level);
+    // TPRINT("%s irq=%d lvl=%d\n", __func__, irq, level);
 
     qemu_set_irq(qdev_get_gpio_in(DEVICE(&a9mpcore->gic), irq), level);
     qemu_set_irq(qdev_get_gpio_in(DEVICE(ictlr), irq), level);

@@ -49,6 +49,8 @@ extern void * tegra_bsev_dev;
 extern void * tegra_idc1_dev;
 extern void * tegra_idc2_dev;
 extern void * tegra_idc3_dev;
+extern void * tegra_idc4_dev;
+extern void * tegra_idc5_dev;
 extern void * tegra_dvc_dev;
 extern void * tegra_grhost_dev;
 extern void * tegra_arb_sema_dev;

@@ -972,9 +972,9 @@ static void tegra_apb_misc_priv_reset(DeviceState *dev)
     s->das_dac_input_data_clk_sel_1.reg32 = DAS_DAC_INPUT_DATA_CLK_SEL_1_RESET;
     s->das_dac_input_data_clk_sel_2.reg32 = DAS_DAC_INPUT_DATA_CLK_SEL_2_RESET;
 
-    s->gp_hidrev.chipid = 0x20;
     s->gp_hidrev.hidfam = 0x7;
     s->gp_hidrev.majorrev = 0x1;
+    s->gp_hidrev.chipid = 0x30;
     s->gp_hidrev.minorrev = 0x4;
 }
 
