@@ -62,12 +62,25 @@ static uint64_t tegra_snor_read(void *opaque, hwaddr offset,
     tegra_snor *s = opaque;
     uint64_t ret = 0;
 
-    if (offset < s->length) {
-        ret = s->storage[offset];
+    if (offset + size <= s->length) {
+        switch (size) {
+        case 1:
+            ret = s->storage[offset];
+            break;
+        case 2:
+            ret = *((uint16_t *) &s->storage[offset]);
+            break;
+        case 4:
+            ret = *((uint32_t *) &s->storage[offset]);
+            break;
+        default:
+            printf("tegra.snor: read with invalid size %d\n", size);
+            break;
+        }
     } else {
         printf("tegra.snor: read from invalid offset 0x%" HWADDR_PRIx "\n", offset);
     }
-    
+
     TRACE_READ(s->iomem.addr, offset, ret);
 
     return ret;
@@ -78,9 +91,21 @@ static void tegra_snor_write(void *opaque, hwaddr offset,
 {
     tegra_snor *s = opaque;
 
-    if (offset < s->length) {
-        TRACE_WRITE(s->iomem.addr, offset, s->storage[offset], value);
-        s->storage[offset] = value;
+    if (offset + size <= s->length) {
+        switch (size) {
+        case 1:
+            s->storage[offset] = value;
+            break;
+        case 2:
+            *((uint16_t *) &s->storage[offset]) = value;
+            break;
+        case 4:
+            *((uint32_t *) &s->storage[offset]) = value;
+            break;
+        default:
+            printf("tegra.snor: write with invalid size %d\n", size);
+            break;
+        }
     } else {
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
         printf("tegra.snor: write to invalid offset 0x%" HWADDR_PRIx "\n", offset);
