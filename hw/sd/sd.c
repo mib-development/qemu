@@ -304,11 +304,13 @@ static uint8_t sd_get_dat_lines(SDState *sd)
 
 static bool sd_get_cmd_line(SDState *sd)
 {
+    printf("sd_get_cmd_line\n");
     return sd->enable ? sd->cmd_line : false;
 }
 
 static void sd_set_voltage(SDState *sd, uint16_t millivolts)
 {
+    printf("sd_set_voltage\n");
     trace_sdcard_set_voltage(millivolts);
 
     switch (millivolts) {
@@ -822,6 +824,7 @@ static inline uint64_t sd_addr_to_wpnum(uint64_t addr)
 
 static void sd_reset(DeviceState *dev)
 {
+    printf("sd_reset\n");
     SDState *sd = SDMMC_COMMON(dev);
     SDCardClass *sc = SDMMC_COMMON_GET_CLASS(sd);
     uint64_t size;
@@ -869,11 +872,13 @@ static void sd_reset(DeviceState *dev)
 
 static bool sd_get_inserted(SDState *sd)
 {
+    printf("sd_get_inserted\n");
     return sd->blk && blk_is_inserted(sd->blk);
 }
 
 static bool sd_get_readonly(SDState *sd)
 {
+    printf("sd_get_readonly\n");
     return sd->wp_switch;
 }
 
@@ -2198,6 +2203,7 @@ static bool cmd_valid_while_locked(SDState *sd, unsigned cmd)
 
 int sd_do_command(SDState *sd, SDRequest *req,
                   uint8_t *response) {
+    printf("sd_do_command\n");
     int last_state;
     sd_rsp_type_t rtype;
     int rsplen;
@@ -2351,6 +2357,7 @@ static bool sd_generic_read_byte(SDState *sd, uint8_t *value)
 
 void sd_write_byte(SDState *sd, uint8_t value)
 {
+    printf("sd_write_byte\n");
     int i;
 
     if (!sd->blk || !blk_is_inserted(sd->blk) || !sd->enable)
@@ -2480,6 +2487,7 @@ void sd_write_byte(SDState *sd, uint8_t value)
 
 uint8_t sd_read_byte(SDState *sd)
 {
+    printf("sd_read_byte\n");
     /* TODO: Append CRCs */
     const uint8_t dummy_byte = 0x00;
     uint8_t ret;
@@ -2553,16 +2561,19 @@ uint8_t sd_read_byte(SDState *sd)
 
 static bool sd_receive_ready(SDState *sd)
 {
+    printf("sd_receive_ready\n");
     return sd->state == sd_receivingdata_state;
 }
 
 static bool sd_data_ready(SDState *sd)
 {
+    printf("sd_data_ready\n");
     return sd->state == sd_sendingdata_state;
 }
 
 void sd_enable(SDState *sd, bool enable)
 {
+    printf("sd_enable\n");
     sd->enable = enable;
 }
 

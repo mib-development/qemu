@@ -178,12 +178,15 @@ static uint64_t tegra_ictlr_read(void *opaque, hwaddr offset, unsigned size)
 {
     tegra_ictlr *s = opaque;
     int bank = (offset >> 8);
+    int reg = (offset & 0xff);
     uint64_t ret = 0;
 
-    if (bank >= MAX_BANKS)
-        goto out;
+    if (bank >= MAX_BANKS) {
+        TRACE_READ(s->iomem.addr + bank * BANK_SIZE, reg, ret);
+        return 0;
+    }
 
-    switch (offset & 0xff) {
+    switch (reg) {
     case ICTLR_VIRQ_CPU_OFFSET:
         ret = s->virq_cpu[bank];
         break;
@@ -214,12 +217,9 @@ static uint64_t tegra_ictlr_read(void *opaque, hwaddr offset, unsigned size)
     case ICTLR_COP_IEP_CLASS_OFFSET:
         ret = s->cop_iep_class[bank];
         break;
-    default:
-        break;
     }
 
-out:
-    TRACE_READ(s->iomem.addr + bank * BANK_SIZE, offset, ret);
+    TRACE_READ(s->iomem.addr + bank * BANK_SIZE, reg, ret);
 
     return ret;
 }
@@ -229,55 +229,48 @@ static void tegra_ictlr_write(void *opaque, hwaddr offset,
 {
     tegra_ictlr *s = opaque;
     int bank = (offset >> 8);
+    int reg = (offset & 0xff);
 
     if (bank >= MAX_BANKS) {
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, 0, value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, 0, value);
         return;
     }
 
-    switch (offset & 0xff) {
+    switch (reg) {
     case ICTLR_FIR_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->fir[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->fir[bank], value);
         s->fir[bank] |= value;
         break;
-
     case ICTLR_FIR_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->fir[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->fir[bank], value);
         s->fir[bank] &= ~value;
         break;
-
     case ICTLR_CPU_IER_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cpu_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->cpu_ier[bank], value);
         s->cpu_ier[bank] |= value;
         break;
-
     case ICTLR_CPU_IER_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cpu_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->cpu_ier[bank], value);
         s->cpu_ier[bank] &= ~value;
         break;
-
     case ICTLR_CPU_IEP_CLASS_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cpu_iep_class[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->cpu_iep_class[bank], value);
         s->cpu_iep_class[bank] = value;
         break;
-
     case ICTLR_COP_IER_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cop_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->cop_ier[bank], value);
         s->cop_ier[bank] |= value;
         break;
-
     case ICTLR_COP_IER_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cop_ier[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->cop_ier[bank], value);
         s->cop_ier[bank] &= ~value;
         break;
-
     case ICTLR_COP_IEP_CLASS_OFFSET:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, s->cop_iep_class[bank], value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, s->cop_iep_class[bank], value);
         s->cop_iep_class[bank] = value;
         break;
-
     default:
-        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, offset, 0, value);
+        TRACE_WRITE(s->iomem.addr + bank * BANK_SIZE, reg, 0, value);
         return;
     }
 
