@@ -467,26 +467,32 @@ static void pflash_write(PFlashCFI01 *pfl, hwaddr offset,
 
     cmd = value;
 
+    printf("pflash_write: offset=%lx, width=%d, value=%lx, wcycle=%d\n", offset, width, value, pfl->wcycle);
     trace_pflash_io_write(pfl->name, offset, width, value, pfl->wcycle);
     if (!pfl->wcycle) {
+        printf("pflash_write: wcycle=0\n");
         /* Set the device in I/O access mode */
         memory_region_rom_device_set_romd(&pfl->mem, false);
     }
 
     switch (pfl->wcycle) {
     case 0:
+        printf("pflash_write: wcycle=0\n");
         /* read mode */
         switch (cmd) {
         case 0x00: /* This model reset value for READ_ARRAY (not CFI) */
+            printf("pflash_write: cmd=0x00\n");
             goto mode_read_array;
         case 0x10: /* Single Byte Program */
         case 0x40: /* Single Byte Program */
+            printf("pflash_write: single byte program\n");
             trace_pflash_write(pfl->name, "single byte program (0)");
             break;
         case 0x20: /* Block erase */
             p = pfl->storage;
             offset &= ~(pfl->sector_len - 1);
 
+            printf("pflash_write: block erase: offset=%lx, sector_len=%lx\n", offset, pfl->sector_len);
             trace_pflash_write_block_erase(pfl->name, offset, pfl->sector_len);
 
             if (!pfl->ro) {
@@ -498,24 +504,30 @@ static void pflash_write(PFlashCFI01 *pfl, hwaddr offset,
             pfl->status |= 0x80; /* Ready! */
             break;
         case 0x50: /* Clear status bits */
+            printf("pflash_write: clear status bits\n");
             trace_pflash_write(pfl->name, "clear status bits");
             pfl->status = 0x0;
             goto mode_read_array;
         case 0x60: /* Block (un)lock */
+            printf("pflash_write: block (un)lock\n");
             trace_pflash_write(pfl->name, "block unlock");
             break;
         case 0x70: /* Status Register */
+            printf("pflash_write: status register\n");
             trace_pflash_write(pfl->name, "read status register");
             pfl->cmd = cmd;
             return;
         case 0x90: /* Read Device ID */
+            printf("pflash_write: read device id\n");
             trace_pflash_write(pfl->name, "read device information");
             pfl->cmd = cmd;
             return;
         case 0x98: /* CFI query */
+            printf("pflash_write: CFI query\n");
             trace_pflash_write(pfl->name, "CFI query");
             break;
         case 0xe8: /* Write to buffer */
+            printf("pflash_write: write to buffer\n");
             trace_pflash_write(pfl->name, "write to buffer");
             pfl->status |= 0x80; /* Ready! */
             break;
@@ -532,6 +544,7 @@ static void pflash_write(PFlashCFI01 *pfl, hwaddr offset,
         pfl->cmd = cmd;
         break;
     case 1:
+        printf("pflash_write: wcycle=1\n");
         switch (pfl->cmd) {
         case 0x10: /* Single Byte Program */
         case 0x40: /* Single Byte Program */
@@ -596,6 +609,7 @@ static void pflash_write(PFlashCFI01 *pfl, hwaddr offset,
         }
         break;
     case 2:
+        printf("pflash_write: wcycle=2\n");
         switch (pfl->cmd) {
         case 0xe8: /* Block write */
             /* FIXME check @offset, @width */
@@ -623,6 +637,7 @@ static void pflash_write(PFlashCFI01 *pfl, hwaddr offset,
         }
         break;
     case 3: /* Confirm mode */
+        printf("pflash_write: wcycle=3\n");
         switch (pfl->cmd) {
         case 0xe8: /* Block write */
             if ((cmd == 0xd0) && !(pfl->status & 0x10)) {

@@ -35,6 +35,7 @@
 #include "sysemu/reset.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/cpus.h"
+#include "hw/block/flash.h"
 
 #include "hw/hw.h"
 #include "hw/i2c/i2c.h"
@@ -383,12 +384,38 @@ static void tegra2_init(MachineState *machine)
                                          TEGRA_RTC_BASE, DIRQ(INT_RTC));
 
     /* SPI NOR */
-    DriveInfo *di = drive_get(IF_MTD, 0, 0);
-    BlockBackend *blk = di ? blk_by_legacy_dinfo(di) : NULL;
-    DeviceState *snor = qdev_new("tegra.snor");
-    qdev_prop_set_drive_err(snor, "drive", blk, &error_fatal);
-    sysbus_realize_and_unref(SYS_BUS_DEVICE(snor), &error_fatal);
-    sysbus_mmio_map(SYS_BUS_DEVICE(snor), 0, TEGRA_NOR_FLASH_BASE);
+    // PFlashCFI02 *pflash_cfi02_register(
+    // hwaddr base,
+    // const char *name,
+    // hwaddr size,
+    // BlockBackend *blk,
+    // uint32_t sector_len,
+    // int nb_mappings,
+    // int width,
+    // uint16_t id0, uint16_t id1,
+    // uint16_t id2, uint16_t id3,
+    // uint16_t unlock_addr0,
+    // uint16_t unlock_addr1,
+    // int be);
+    DriveInfo *dinfo = drive_get(IF_MTD, 0, 0);
+    BlockBackend *blk = blk_by_legacy_dinfo(dinfo);
+    int64_t blk_len = blk_getlength(blk);
+    // pflash_cfi02_register(TEGRA_NOR_FLASH_BASE, "tegra.norflash", blk_len,
+    //     blk_by_legacy_dinfo(dinfo), 0x1000, 2, 4, 0x00, 0x00, 0x00, 0x00, 0x555, 0x2AA, 0);
+
+        // PFlashCFI01 *pflash_cfi01_register(
+        //     hwaddr base,
+        //     const char *name,
+        //     hwaddr size,
+        //     BlockBackend *blk,
+        //     uint32_t sector_len,
+        //     int bank_width,
+        //     uint16_t id0, uint16_t id1,
+        //     uint16_t id2, uint16_t id3,
+        //     int be)
+
+        pflash_cfi01_register(TEGRA_NOR_FLASH_BASE, "tegra.norflash", blk_len,
+            blk_by_legacy_dinfo(dinfo), 0x1000, 4, 0x00, 0x00, 0x00, 0x00, 0);
 
     /* SDHCI4 */
     {

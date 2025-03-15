@@ -177,6 +177,7 @@ static void pflash_setup_mappings(PFlashCFI02 *pfl)
 
 static void pflash_reset_state_machine(PFlashCFI02 *pfl)
 {
+    printf("pflash_reset_state_machine\n");
     trace_pflash_reset(pfl->name);
     pfl->cmd = 0x00;
     pfl->wcycle = 0;
@@ -386,6 +387,7 @@ static uint64_t pflash_read(void *opaque, hwaddr offset, unsigned int width)
         break;
     }
     trace_pflash_io_read(pfl->name, offset, width, ret, pfl->cmd, pfl->wcycle);
+    printf("pflash_read: offset=%lx, width=%d, ret=%lx\n", offset, width, ret);
 
     return ret;
 }
@@ -436,6 +438,8 @@ static void pflash_write(void *opaque, hwaddr offset, uint64_t value,
     uint8_t *p;
     uint8_t cmd;
 
+    printf("pflash_write: offset=%lx, value=%lx, width=%d\n", offset, value, width);
+
     trace_pflash_io_write(pfl->name, offset, width, value, pfl->wcycle);
     cmd = value;
     if (pfl->cmd != 0xA0) {
@@ -472,6 +476,7 @@ static void pflash_write(void *opaque, hwaddr offset, uint64_t value,
     check_unlock0:
         if (boff == 0x55 && cmd == 0x98) {
             /* Enter CFI query mode */
+            printf("pflash_write: enter CFI query mode\n");
             pfl->wcycle = WCYCLE_CFI;
             pfl->cmd = 0x98;
             return;
@@ -496,19 +501,23 @@ static void pflash_write(void *opaque, hwaddr offset, uint64_t value,
             return;
         }
         if (boff != pfl->unlock_addr0 || cmd != 0xAA) {
+            printf("pflash_write: unlock0 failed: boff=%lx, cmd=%lx, unlock_addr0=%lx\n", boff, cmd, pfl->unlock_addr0);
             trace_pflash_unlock0_failed(pfl->name, boff,
                                         cmd, pfl->unlock_addr0);
             goto reset_flash;
         }
+        printf("pflash_write: unlock sequence started\n");
         trace_pflash_write(pfl->name, "unlock sequence started");
         break;
     case 1:
         /* We started an unlock sequence */
     check_unlock1:
         if (boff != pfl->unlock_addr1 || cmd != 0x55) {
+            printf("pflash_write: unlock1 failed\n");
             trace_pflash_unlock1_failed(pfl->name, boff, cmd);
             goto reset_flash;
         }
+        printf("pflash_write: unlock sequence done\n");
         trace_pflash_write(pfl->name, "unlock sequence done");
         break;
     case 2:
